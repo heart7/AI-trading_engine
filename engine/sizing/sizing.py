@@ -86,7 +86,7 @@ def size_es(inp: SizingInputs) -> float:
     """Largest long notional x with ES97.5(1d) of book+x <= es_mult * r_tier * NAV (closed form)."""
     limit = inp.es_mult * inp.r_tier * inp.nav / ES975_NORMAL  # max book sigma in USD
     s = inp.sigma_daily
-    b = 2 * s * sum(h.notional * h.sigma_daily * inp.rho_stress for h in inp.book)
+    b = 2 * s * math.fsum(h.notional * h.sigma_daily * inp.rho_stress for h in inp.book)
     c0 = _book_var(inp.book, None, inp.rho_stress) - limit ** 2
     a = s * s
     if c0 > 0:

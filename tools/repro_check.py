@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Reproducibility spot-check (spec §13.5): replay a pinned FIXTURE universe twice and compare with the golden hash.
+"""Reproducibility spot-check (spec §13.5): replay a pinned FIXTURE universe twice (must match bit for bit) and
+compare its decision fingerprint with the golden file.
 
   python3 tools/repro_check.py            # check
   python3 tools/repro_check.py --update   # re-pin after an intended decision-plane change (commit the diff)
@@ -24,7 +25,8 @@ GOLDEN = ROOT / "tests" / "replay" / "golden.json"
 def run() -> dict:
     pol = load_policy()
     r = replay(universe(), pol.doc, StrategyRouter(pol.doc), ReplayConfig(mu_q_daily=0.001))
-    return {"policy_hash": pol.hash, "result_hash": r.result_hash, "trades": len(r.trades), "funnel": r.funnel}
+    return {"policy_hash": pol.hash, "fingerprint": r.fingerprint, "result_hash": r.result_hash, "trades": len(r.trades),
+            "funnel": r.funnel}
 
 
 def main() -> int:
@@ -37,10 +39,13 @@ def main() -> int:
         print("pinned", a["result_hash"])
         return 0
     g = json.loads(GOLDEN.read_text())
-    if g != a:
+    # Exact bits can differ across CPUs (numpy picks SIMD kernels per machine), so the golden pins the
+    # decision fingerprint; exact reproducibility is checked by the two runs above in the same environment.
+    keys = ("policy_hash", "fingerprint", "trades", "funnel")
+    if any(g[k] != a[k] for k in keys):
         print("REPLAY CHANGED vs golden:\n golden", g, "\n now   ", a)
         return 1
-    print("reproducible:", a["result_hash"], f"trades={a['trades']}")
+    print("reproducible:", a["fingerprint"], f"exact={a['result_hash'][:12]} trades={a['trades']}")
     return 0
 
 

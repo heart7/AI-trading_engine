@@ -14,6 +14,7 @@ Interpretations recorded here (spec is silent):
 """
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -122,7 +123,7 @@ def signal_at(h: np.ndarray, l: np.ndarray, c: np.ndarray, i: int, p: SignalPara
     ef, es = ema(cc, p.ema_fast)[-1], ema(cc, p.ema_slow)[-1]
     Z = _clip((ef - es) / a / p.clip_t) if a > 0 else 0.0
     vals = {"B": B, "M": M, "Z": Z}
-    T = sum(vals[k] for k in p.components) / len(p.components)
+    T = math.fsum(vals[k] for k in p.components) / len(p.components)
     return Signal(B, M, Z, T, None, a, sig)
 
 
@@ -166,6 +167,6 @@ def signal_series(h: np.ndarray, l: np.ndarray, c: np.ndarray, p: SignalParams) 
         Z = _clip((ef[d - 1] - es[d - 1]) / a / p.clip_t) if a > 0 else 0.0
         vals = {"B": B, "M": M, "Z": Z}
         out["M"][i], out["Z"][i] = M, Z
-        out["T"][i] = sum(vals[k] for k in p.components) / len(p.components)
+        out["T"][i] = math.fsum(vals[k] for k in p.components) / len(p.components)
         out["atr_daily"][i], out["sigma_daily"][i] = a, sig
     return out
