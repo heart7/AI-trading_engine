@@ -8,6 +8,6 @@ runs/
 .env
 *.key
 *.pem
-secrets/
+/secrets/
 node_modules/
 dist/
