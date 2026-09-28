@@ -33,7 +33,7 @@ from engine.execution.model import (
 )
 from engine.execution.ratelimit import Lane, RateLimited, TokenBucket
 from engine.execution.sim import InstrumentSpec
-from engine.execution.venues import VENUE_BLOCKING, VenueRegistry
+from engine.execution.venues import ENGINE_BLOCKING, VENUE_BLOCKING, VenueRegistry
 from engine.stops.stops import StopWidenAttempt
 
 MAX_RETRIES = 3
@@ -114,6 +114,7 @@ class OMS:
 
     def entry_blocks(self) -> set[str]:
         codes = self.incidents.open_codes(self.scope) & (VENUE_BLOCKING | {"ORDER_STATE_UNKNOWN"})
+        codes |= self.incidents.open_codes("engine") & ENGINE_BLOCKING
         if self.venues is not None:
             codes |= self.venues.entries_blocked(self.adapter.venue_id)
         if not self.reconciled:

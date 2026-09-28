@@ -26,7 +26,11 @@ PERP_SLOTS = ("deriv_read", "deriv_trade")
 READ_SLOTS = frozenset({"read", "deriv_read"})
 # Entries on a venue stop while any of these is open for it (spec §8.3, §8.7).
 VENUE_BLOCKING = frozenset({"PROTECTION_UNVERIFIED", "CLOCK_SKEW", "ORDER_STATE_MISMATCH", "COST_MODEL_DIVERGENCE",
-                            "VENUE_PERMISSION_VIOLATION", "WS_RESYNC_PENDING", "CAPABILITY_CHANGED"})
+                            "VENUE_PERMISSION_VIOLATION", "WS_RESYNC_PENDING", "CAPABILITY_CHANGED",
+                            "COLLATERAL_CAP"})
+# Entries everywhere stop while any of these is open at engine scope (spec §12.1, §13.6, §8.4, INV-43).
+ENGINE_BLOCKING = frozenset({"NAV_DIVERGENCE", "RECON_BREAK", "VERIFIER_HEARTBEAT_LOST", "LEDGER_CHAIN_BREAK",
+                             "COLLATERAL_CAP", "ATTRIBUTION_MISMATCH", "GEO_EGRESS_MISMATCH"})
 
 
 class VenueRefused(Exception):

@@ -29,6 +29,10 @@ jobs:
         run: python tools/repro_check.py
       - name: Adapter conformance suite (simulated venue)
         run: python tools/uchfe.py conformance --connector kraken-spot --out runs/ci/conformance
+      - name: P3.5 drills (kill verifier -> entries block; attribution to the penny)
+        run: python tools/uchfe.py drill --out runs/ci/drills
+      - name: Stress battery on the active policy (reported; S4 fails, see decision 0004)
+        run: python tools/uchfe.py stress --report-only --out runs/ci/stress
       - name: Tests and negative-test suite (with run record)
         env:
           UCHFE_INVARIANT_REPORT: runs/ci/invariants.json
