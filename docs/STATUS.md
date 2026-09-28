@@ -139,3 +139,21 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Perp connector order paths (binance-usdm, bybit-v5-linear, kraken-futures) | SN | registered; PAPER only, and execution_allowed is empty for B |
 | Real funding history and perp specs | SN — blocked | P1 data access |
 | **P4 exit gate** (INV-14..25 green; B verdicts on file) | met on FIXTURE | |
+
+## P5 UI + Reporter
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Read-only BFF: every §15.3 and §16.8.2 projection as GET, `POST /v1/reporter/ask` the only other route, `?cursor=` masks any GET server-side | RV | `engine/bff/server.py`, `engine/bff/projections.py` |
+| Paper session: fixture universe through the real decision code, evidence plane and regime layer at T0 | RV on FIXTURE | `engine/bff/session.py` |
+| Class-bound rendering (§16.6): every figure is a claim rendered by the BFF; each rule has a negative test; FIXTURE hatched with `certified: false` (INV-32) | RV | `engine/ui/render.py`, `tests/negative/test_p5_invariants.py` |
+| `agent_activity_event` generation: one pointer per claim, intent, order transition and read-back; schema-valid | RV | `engine/bff/activity.py` |
+| Activity screen (§16.8) P1–P7, ported from the reference mock onto the projections; all §16.8.3 acceptance tests | RV (Python); browser check runs where Chromium exists | `engine/ui/static/activity.js`, `tests/unit/test_bff.py` |
+| The other 14 screens and the Reporter side panel | RV on FIXTURE | `engine/ui/static/app.js` |
+| Reporter: refuses EXECUTE requests, groundedness filter strips numbers not in the bundle and logs RECON_BREAK, REPORTED class | RV | `engine/bff/reporter.py` |
+| No screen computes or formats a material figure (static scan: no `toFixed`, no inline handlers) | RV | `tests/negative/test_p5_invariants.py` |
+| Lane count, SSE stream, cycle clock, T band | decided by default | decision 0005 |
+| Real data on screen | SN — blocked | P1 data access |
+| **P5 exit gate** (rendering negative tests green; no screen computes a material figure) | met on FIXTURE | |
+
+Run it: `python -m engine.bff.server` then open http://127.0.0.1:8710/ (PAPER, FIXTURE, localhost only).

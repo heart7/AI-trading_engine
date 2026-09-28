@@ -89,4 +89,6 @@ def replay_evidence(trades: Sequence[Any], series: Mapping[str, Any], *, nav0: f
             "trades": len(trades), "ledger_net": str(ledger_net.quantize(Decimal("0.01"))),
             "attribution_net": str(att.net.quantize(Decimal("0.01"))),
             "components": {k: str(v.quantize(Decimal("0.01"))) for k, v in att.by_component.items()},
+            "process": {k: str(v.quantize(Decimal("0.01"))) for k, v in sorted(att.by_process.items())},
+            "ledger_chain_ok": led.verify(), "ledger_head": led.head,
             "replay_float_pnl": round(float_net, 2), "ledger_entries": len(led.entries)}
