@@ -15,6 +15,21 @@ class BudgetExceeded(Exception):
     pass
 
 
+class GuardrailMissing(Exception):
+    pass
+
+
+# A change to any of these needs the named guardrail metric (INV-18): tightening the funding time stop cuts
+# funding but also cuts the long-held winners the strategy lives on.
+REQUIRED_GUARDRAILS = {"perps.funding_time_stop_R": "tail_contribution_share"}
+
+
+def check_guardrails(h: dict[str, Any]) -> None:
+    for prefix, metric in REQUIRED_GUARDRAILS.items():
+        if any(c.startswith(prefix) for c in h.get("changes", [])) and metric not in h.get("guardrails", []):
+            raise GuardrailMissing(f"{h['id']}: a change to {prefix} must carry the {metric} guardrail")
+
+
 def load(path: Path = REGISTRY_FILE) -> list[dict[str, Any]]:
     items = yaml.safe_load(path.read_text())["hypotheses"]
     for h in items:
@@ -31,6 +46,7 @@ def budget_used(items: list[dict[str, Any]], year: int) -> int:
 
 def register(items: list[dict[str, Any]], new: dict[str, Any], *, budget_per_year: int) -> list[dict[str, Any]]:
     validate("hypothesis", new)
+    check_guardrails(new)
     year = int(str(new["registered_at"])[:4])
     if budget_used(items, year) + new["budget_debit"] > budget_per_year:
         raise BudgetExceeded(f"{year}: {budget_used(items, year)} + {new['budget_debit']} > {budget_per_year}")

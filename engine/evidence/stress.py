@@ -75,7 +75,7 @@ SCENARIOS: dict[str, tuple[str, str]] = {
     "S6": ("Oct 2025 alt cascade: alts -30% to -70%, BTC -15%", "SYNTHETIC_PROXY"),
     "S7": ("All instruments -40% in 24h, stops filled 25% beyond trigger", "SYNTHETIC"),
     "S8": ("Execution venue API down 6h with open positions", "SYNTHETIC"),
-    "S9": ("Funding +/-0.30%/8h for 10 days", "SYNTHETIC"),
+    "S9": ("Funding +/-0.30% per 8 hours, scaled to each contract interval, for 10 days", "SYNTHETIC"),
     "S10": ("Single coin +/-40% gap on a legal ruling", "SYNTHETIC"),
 }
 

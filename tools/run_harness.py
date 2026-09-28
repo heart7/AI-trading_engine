@@ -3,6 +3,7 @@
 
   python3 tools/run_harness.py --fixture --years 9 --out runs/harness-fixture
   python3 tools/run_harness.py --fixture --es-mult 3.0 --out runs/harness-es3   # ES-limit study
+  python3 tools/run_harness.py --fixture --sleeve B_short --out runs/harness-b-short  # Strategy B book (PAPER)
 
 FIXTURE inputs produce REPORTED-class records: they exercise the harness, they are not evidence.
 """
@@ -47,6 +48,7 @@ def main() -> int:
     ap.add_argument("--years", type=float, default=9.0)
     ap.add_argument("--reps", type=int, default=1000)
     ap.add_argument("--es-mult", type=float)
+    ap.add_argument("--sleeve", default="A_long", choices=["A_long", "B_short", "B_long"])
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     pol = load_policy()
@@ -55,15 +57,21 @@ def main() -> int:
         doc = json.loads(json.dumps(doc))
         doc["risk"]["es975_mult"] = a.es_mult
     series, reports = fixture_universe(a.years)
+    runner = None
+    if a.sleeve != "A_long":
+        from tests.helpers.fixtures import contract_specs, fixture_funding
+        specs = contract_specs()
+        runner = steps.perp_runner(series, doc, specs, fixture_funding(series, specs), a.sleeve)
     ctx = steps.HarnessContext(series=series, policy=doc, policy_hash=content_hash(doc), quality_reports=reports, reps=a.reps,
-                               n_trials=len(__import__("research.registry.registry", fromlist=["load"]).load()))
+                               n_trials=len(__import__("research.registry.registry", fromlist=["load"]).load()),
+                               sleeve=a.sleeve, runner=runner)
     recs = steps.run_all(ctx)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     verdicts = [{"step": r.step, "verdict": r.verdict, "run_id": r.run_id, "metric": r.metric, "value": r.value,
                  "ci": list(r.ci), "details": r.details} for r in recs]
     summary = steps.base(ctx).summary() if recs[0].verdict == "PASS" else {}
-    doc_out = {"class": "REPORTED (FIXTURE)", "policy_hash": content_hash(doc), "base_policy_hash": pol.hash, "es975_mult": doc["risk"]["es975_mult"],
+    doc_out = {"class": "REPORTED (FIXTURE)", "sleeve": a.sleeve, "policy_hash": content_hash(doc), "base_policy_hash": pol.hash, "es975_mult": doc["risk"]["es975_mult"],
                "allowed_mode": allowed_mode(recs), "base_replay": summary, "funnel": steps.base(ctx).funnel,
                "sizing_binding": steps.base(ctx).sizing_binding, "verdicts": verdicts, "runs": ctx.runs}
     (out / "harness.json").write_text(json.dumps(doc_out, indent=2, default=str) + "\n")
