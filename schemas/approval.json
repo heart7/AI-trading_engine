@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/approval.json",
+  "title": "Single-signer approval record (\u00a70.4, INV-33)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action",
+    "subject_hash",
+    "signer_id",
+    "rationale",
+    "signed_at",
+    "namespace",
+    "signature"
+  ],
+  "properties": {
+    "action": {
+      "enum": [
+        "POLICY_ACTIVATE",
+        "TIER_UPGRADE",
+        "TIER_DOWNGRADE",
+        "VENUE_TRADE_ENABLE",
+        "REARM",
+        "RESTART_AFTER_TERMINATE",
+        "PROMOTE",
+        "CAPABILITY_APPROVE",
+        "VENUE_REMOVE",
+        "PROFIT_ALLOCATION",
+        "ACCESS_RECORD"
+      ]
+    },
+    "subject_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signer_id": {
+      "type": "string"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 10
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "namespace": {
+      "const": "uchfe-approval@v1"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Armored OpenSSH SSHSIG over the canonical approval statement"
+    }
+  }
+}

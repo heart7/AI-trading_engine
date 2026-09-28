@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Secret scan
+        run: python tools/secret_scan.py
+      - name: Lint
+        run: ruff check .
+      - name: Policy loads and is coherent for PAPER
+        run: python tools/uchfe.py coherence --mode PAPER
+      - name: Tests and negative-test suite (with run record)
+        env:
+          UCHFE_INVARIANT_REPORT: runs/ci/invariants.json
+        run: python tools/run_record.py --out runs/ci/tests.json --summary-json runs/ci/invariants.json -- python -m pytest -q tests
+      - name: Upload run records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-records
+          path: runs/ci/

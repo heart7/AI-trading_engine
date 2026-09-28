@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/run_record.json",
+  "title": "Run record (conduct rule 0.2.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "command",
+    "env_hash",
+    "started_at",
+    "finished_at",
+    "exit_code",
+    "summary",
+    "output_sha256"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "env_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "env": {
+      "type": "object"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "git_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "git_dirty": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "output_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "output_tail": {
+      "type": "string"
+    }
+  }
+}

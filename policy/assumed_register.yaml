@@ -1,0 +1,19 @@
+# ASSUMED-parameter register (spec §0.1.4, §16.6). Every ASSUMED fact carries an owner and a review date
+# and renders as an ASSUMED chip in the UI. Review quarterly (§7.9).
+assumed:
+  - {id: A-FEES-KRAKEN, value: "spot 0.25% maker / 0.40% taker", owner: principal, review_by: "2026-12-31", source: "spec §2.4, §8.1; verify from Kraken fee page and account fee endpoint"}
+  - {id: A-FEES-BINANCE, value: "spot 0.10%/0.10%; USDM 0.02%/0.05%", owner: principal, review_by: "2026-12-31", source: "spec §8.1"}
+  - {id: A-FEES-BYBIT, value: "spot 0.10%/0.10%; perps 0.02%/0.055%", owner: principal, review_by: "2026-12-31", source: "spec §8.1"}
+  - {id: A-OPEX, value: "operating_costs_usd_month = 200", owner: principal, review_by: "2026-12-31", source: "spec §2.4, §21 item 5"}
+  - {id: A-KRAKEN-FCA, value: "Kraken spot is FCA-registered and serves UK residents", owner: principal, review_by: "2026-12-31", source: "spec §1.1"}
+  - {id: A-UK-RETAIL-DERIV-BAN, value: "FCA ban on crypto derivatives for UK retail applies", owner: principal, review_by: "2026-12-31", source: "spec §2.5"}
+  - {id: A-BINANCE-BYBIT-UK, value: "Nigerian-KYC accounts used from the UK likely breach venue terms; data-only until written venue confirmation", owner: principal, review_by: "2026-12-31", source: "spec §2.5, INV-43"}
+  - {id: A-TAX-UK, value: "UK CGT matching same-day, 30-day, s104; rates and annual exempt amount not yet set", owner: principal, review_by: "2026-12-31", source: "spec §12.4; accountant sign-off before LIVE"}
+  - {id: A-RETENTION, value: "records kept >= 6 years", owner: principal, review_by: "2026-12-31", source: "spec §12.7"}
+  - {id: A-ERA-BOUNDARIES, value: "era boundaries for history homogeneity", owner: principal, review_by: "2026-12-31", source: "spec §7.6a"}
+  - {id: A-BLACKOUT, value: "blackout calendar (maintenance, forks, SOL/XRP unlocks)", owner: principal, review_by: "2026-12-31", source: "spec §5.1"}
+  - {id: A-MARGIN-PROJECTION, value: "B stop distance 7%, maintenance margin 0.5% for coherence C07", owner: principal, review_by: "2026-12-31", source: "spec Appendix B.2"}
+  - {id: A-MDE-ABLATION, value: "paired Sharpe diff MDE 0.2", owner: principal, review_by: "2026-12-31", source: "H-A-STEP3-ABLATION"}
+  - {id: A-MDE-VOLDEF, value: "max DD improvement MDE 2pp", owner: principal, review_by: "2026-12-31", source: "H-A-STEP5-VOLDEFLATION"}
+  - {id: A-DEADMAN-TIMERS, value: "Kraken CancelAllOrdersAfter; Binance countdownCancelAll; Bybit disconnect-cancel-all", owner: principal, review_by: "2026-12-31", source: "spec §8.7"}
+  - {id: A-PERMISSION-PROBES, value: "Binance apiRestrictions; Bybit query-api; Kraken attested", owner: principal, review_by: "2026-12-31", source: "spec §8.5.3"}

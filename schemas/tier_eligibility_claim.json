@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/tier_eligibility_claim.json",
+  "title": "Tier eligibility claim (\u00a73.3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "kind",
+    "class",
+    "snapshot_hash",
+    "policy_hash",
+    "code_version",
+    "created_at",
+    "certified",
+    "payload"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "tier_eligibility_claim"
+    },
+    "class": {
+      "const": "DERIVED"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ttl_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "certified": {
+      "type": "boolean"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible_tier",
+        "gates",
+        "binding_gate",
+        "as_of"
+      ],
+      "properties": {
+        "eligible_tier": {
+          "enum": [
+            "T0",
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        },
+        "gates": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate",
+                "passed"
+              ],
+              "properties": {
+                "gate": {
+                  "type": "string"
+                },
+                "passed": {
+                  "type": "boolean"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "binding_gate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

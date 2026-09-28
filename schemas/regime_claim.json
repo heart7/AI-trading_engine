@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/regime_claim.json",
+  "title": "Regime claim (\u00a77.6); m_regime > 1 and missing counts_decayed are rejected (INV-10)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "kind",
+    "class",
+    "snapshot_hash",
+    "policy_hash",
+    "code_version",
+    "created_at",
+    "certified",
+    "payload"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "regime_claim"
+    },
+    "class": {
+      "const": "ESTIMATED"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ttl_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "certified": {
+      "type": "boolean"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instrument_id",
+        "bar_close",
+        "state",
+        "P_next",
+        "counts_decayed",
+        "ESS",
+        "m_regime",
+        "authority",
+        "binding_reasons"
+      ],
+      "properties": {
+        "instrument_id": {
+          "type": "string"
+        },
+        "bar_close": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "enum": [
+            "U",
+            "D",
+            "R",
+            "S"
+          ]
+        },
+        "P_next": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "U",
+            "D",
+            "R",
+            "S"
+          ],
+          "properties": {
+            "U": {
+              "type": "object",
+              "required": [
+                "mean",
+                "lo90",
+                "hi90"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mean": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "lo90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "hi90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "D": {
+              "type": "object",
+              "required": [
+                "mean",
+                "lo90",
+                "hi90"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mean": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "lo90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "hi90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "R": {
+              "type": "object",
+              "required": [
+                "mean",
+                "lo90",
+                "hi90"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mean": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "lo90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "hi90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "S": {
+              "type": "object",
+              "required": [
+                "mean",
+                "lo90",
+                "hi90"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mean": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "lo90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "hi90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        },
+        "counts_decayed": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "ESS": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "m_regime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "authority": {
+          "enum": [
+            "T0",
+            "T1"
+          ]
+        },
+        "binding_reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "STALE",
+              "ESS",
+              "CI_TOO_WIDE",
+              "THETA0",
+              "STRESS",
+              "N1"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

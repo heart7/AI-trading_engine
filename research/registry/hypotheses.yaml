@@ -1,0 +1,62 @@
+# Hypothesis registry (spec §10.2 L4, §9.3, §9.4). The only write path for ideas.
+# Seeded in P0 with the pre-registered harness steps 2-5 for Strategy A. Values are HYPOTHESIS
+# until a run_id with a verdict is attached. Budget: governance.hypothesis_budget_per_year = 40.
+hypotheses:
+  - id: H-A-STEP2-NULL
+    owner: principal
+    sleeve: A_long
+    harness_step: 2
+    class: HYPOTHESIS
+    description: >-
+      The shared trend ensemble T=(B+M+Z)/3 on the Strategy A universe earns a positive net
+      Sharpe over cash after conservative (q75) costs, on offline anchored walk-forward replay.
+    metric: annualised net Sharpe of the daily portfolio return series vs cash (3m T-bill)
+    mde: {annual_sharpe: 0.6, basis: "spec §2.3: ~7.5y of daily returns detects SR 0.6 at 95%; BTC certified history from ~2014"}
+    pass_rule: one-sided 95% CI lower bound of annualised net Sharpe > 0 AND DSR (current trial count) > 0.95 AND track length >= MinTRL
+    falsification_rule: lower bound <= 0 or DSR <= 0.95 -> sleeve weight 0 and endorsed fallback (§9.5)
+    budget_debit: 1
+    run_ids: []
+    status: PRE_REGISTERED
+    registered_at: "2026-09-28"
+  - id: H-A-STEP3-ABLATION
+    owner: principal
+    sleeve: A_long
+    harness_step: 3
+    class: HYPOTHESIS
+    description: Each component B, M, Z contributes; removing it lowers out-of-sample net Sharpe beyond noise.
+    metric: paired difference in OOS net Sharpe (full vs component removed), deflated with rho_paired
+    mde: {paired_sharpe_diff: 0.2, rho_paired: 0.40, basis: "ASSUMED, owner principal, review 2026-12-31"}
+    pass_rule: keep component iff the paired CI of (full - removed) excludes 0 on the harmful side
+    falsification_rule: paired CI includes 0 -> delete that component by policy proposal (if only B survives, T := B)
+    budget_debit: 3
+    run_ids: []
+    status: PRE_REGISTERED
+    registered_at: "2026-09-28"
+  - id: H-A-STEP4-COST
+    owner: principal
+    sleeve: A_long
+    harness_step: 4
+    class: HYPOTHESIS
+    description: The edge survives cost stress at Kraken base retail fees (0.25% maker / 0.40% taker, ASSUMED).
+    metric: net Sharpe CI lower bound under the tornado (fees +/-50%, slippage q50/q75/q90)
+    mde: {annual_sharpe_lower_bound: 0.0, basis: "same series as step 2"}
+    pass_rule: net Sharpe CI lower bound > 0 at q75 slippage and fees +50%
+    falsification_rule: lower bound <= 0 at that venue/fee tier -> sleeve weight 0 at that venue/fee tier
+    budget_debit: 1
+    run_ids: []
+    status: PRE_REGISTERED
+    registered_at: "2026-09-28"
+  - id: H-A-STEP5-VOLDEFLATION
+    owner: principal
+    sleeve: A_long
+    harness_step: 5
+    class: HYPOTHESIS
+    description: Book-level vol deflation v = min(1, sigma*/sigma_book) improves drawdown without costing Sharpe.
+    metric: paired max drawdown and net Sharpe, v on vs v = 1
+    mde: {max_dd_improvement: 0.02, basis: "ASSUMED 2pp of NAV, owner principal, review 2026-12-31"}
+    pass_rule: keep deflation iff max DD improves AND Sharpe does not fall beyond noise (paired, rho_paired)
+    falsification_rule: otherwise remove deflation by policy proposal
+    budget_debit: 1
+    run_ids: []
+    status: PRE_REGISTERED
+    registered_at: "2026-09-28"

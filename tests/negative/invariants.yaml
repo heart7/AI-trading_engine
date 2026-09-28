@@ -1,0 +1,219 @@
+# Consolidated invariants (spec §18). Tests that prove an invariant carry @pytest.mark.invariant("INV-xx").
+# An invariant with no such test is reported as NOT IMPLEMENTED (xfail, tracked) by tests/negative/test_invariant_registry.py.
+invariants:
+- id: INV-01
+  invariant: No LLM output in any claim, intent, limit, order or ledger entry
+  negative_test: Inject reporter text into signal_intent → schema reject
+  origin: Inv. 15
+  phase: P0
+- id: INV-02
+  invariant: No withdrawal-scope credential in the engine
+  negative_test: Paste withdrawal key → refused
+  origin: UI 8.11
+  phase: P3
+- id: INV-03
+  invariant: 'Entry requires fresh breakout: long B > 0, short B < 0'
+  negative_test: T ≥ 0.5 with B = 0 → REJECTED NO_BREAKOUT
+  origin: NN-11
+  phase: P2
+- id: INV-04
+  invariant: Stops never widen; trailing only ratchets favourably
+  negative_test: API stop widen → rejected + incident
+  origin: NN-12
+  phase: P2
+- id: INV-05
+  invariant: v ≤ 1 always; spot gross ≤ 1.0× NAV
+  negative_test: σ̂ < σ* → v = 1
+  origin: NN-13
+  phase: P2
+- id: INV-06
+  invariant: cost gate cannot be bypassed; inputs must be FRESH
+  negative_test: stale cost → COST_INPUT_STALE
+  origin: NN-14
+  phase: P2
+- id: INV-07
+  invariant: Exits never gated by evidence
+  negative_test: STALE evidence → reduce-only exit accepted
+  origin: NN-15
+  phase: P2
+- id: INV-08
+  invariant: Adds only at ≥ 1R, one per episode, never to a loser
+  negative_test: add at −0.5R → rejected
+  origin: NN-16
+  phase: P2
+- id: INV-09
+  invariant: No intraday decision path
+  negative_test: intraday trigger → no signal_intent
+  origin: Plan C3
+  phase: P2
+- id: INV-10
+  invariant: m_regime ≤ 1; regime claim needs counts_decayed; regime affects size only at T1
+  negative_test: m = 1.2 → schema reject; T0 with STRESS → v unchanged
+  origin: I-16, I-18, fix 3d
+  phase: P2
+- id: INV-11
+  invariant: Active tier = min(eligible, user-selected); router never upgrades
+  negative_test: NAV crosses floor → notification only, no tier change
+  origin: new
+  phase: P2
+- id: INV-12
+  invariant: Tier upgrade needs all gates + a signed approval
+  negative_test: upgrade with a failing gate or unsigned → refused
+  origin: new
+  phase: P2
+- id: INV-13
+  invariant: Downgraded sleeve is reduce-only; no forced market exit unless FLATTEN
+  negative_test: downgrade → open positions keep stops, no new entries
+  origin: new
+  phase: P2
+- id: INV-14
+  invariant: Σ posted margin ≤ φ × hard DD budget
+  negative_test: order that breaches → MARGIN_INVARIANT
+  origin: v6.1 inv. 53
+  phase: P4
+- id: INV-15
+  invariant: Isolated margin only
+  negative_test: cross-margin order → no code path
+  origin: v6.1 §2
+  phase: P4
+- id: INV-16
+  invariant: Free collateral above buffer swept via human-executed transfer_intent; per-venue and per-issuer caps are hard checks
+  negative_test: cap breach → entries blocked on venue
+  origin: v6.1 inv. 54
+  phase: P3.5
+- id: INV-17
+  invariant: Funding expectations are conditional per book; unconditional mean never used
+  negative_test: admission using unconditional f → reject
+  origin: v6.1 inv. 55
+  phase: P4
+- id: INV-18
+  invariant: Hold in cost identity is outcome-weighted; time-stop changes carry tail-share guardrail
+  negative_test: proposal without guardrail metric → reject
+  origin: v6.1 inv. 56
+  phase: P4
+- id: INV-19
+  invariant: Deflation parameter selected by test type
+  negative_test: paired test using ρ̄_return → reject
+  origin: v6.1 inv. 57
+  phase: P4
+- id: INV-20
+  invariant: Null test settled offline; no live horizon presented as a test of edge
+  negative_test: UI rendering live-only Sharpe as evidence → throws
+  origin: v6.1 inv. 58
+  phase: P2b
+- id: INV-21
+  invariant: Point-in-time universe from listing records
+  negative_test: backtest with constant universe → reject
+  origin: v6.1 inv. 59
+  phase: P4
+- id: INV-22
+  invariant: ADL events recorded as incidents and excluded from training
+  negative_test: ADL episode in training set → job fails
+  origin: v6.1 inv. 60
+  phase: P4
+- id: INV-23
+  invariant: Portfolio time-to-flatten ceiling gates admission
+  negative_test: instrument pushing over ceiling → not admissible
+  origin: v6.1 inv. 61
+  phase: P4
+- id: INV-24
+  invariant: Funding interval/formula from capability snapshot
+  negative_test: hard-coded 8h anywhere → lint fail
+  origin: v6.1 inv. 62
+  phase: P4
+- id: INV-25
+  invariant: Contract-spec change invalidates snapshot, recomputes liquidation distances, blocks entries
+  negative_test: mm schedule change → entries blocked
+  origin: v6.1 inv. 63
+  phase: P4
+- id: INV-26
+  invariant: Attribution sums exactly; no residual; no separate direction term
+  negative_test: mismatch → incident
+  origin: v6.1 inv. 64
+  phase: P3.5
+- id: INV-27
+  invariant: Promotions capped per sleeve and programme-wide; multiplicity trajectory displayed
+  negative_test: 2nd promotion in quarter → reject
+  origin: v6.1 inv. 65
+  phase: P2b
+- id: INV-28
+  invariant: Validation step without run_id renders NOT RUN; PASS requires CI lower bound > 0
+  negative_test: PASS on negative CI → verdict engine rejects
+  origin: fix 3b
+  phase: P2b
+- id: INV-29
+  invariant: Step 6 never gates SHADOW
+  negative_test: — (state-machine test)
+  origin: fix 3a
+  phase: P2b
+- id: INV-30
+  invariant: Entry can never become a market order
+  negative_test: entry escalation → IOC limit only
+  origin: Plan C11
+  phase: P3
+- id: INV-31
+  invariant: Unverified protection blocks entries on venue
+  negative_test: read-back mismatch → PROTECTION_UNVERIFIED
+  origin: Plan C7
+  phase: P3
+- id: INV-32
+  invariant: FIXTURE data renders hatched with certified:false
+  negative_test: fixture in observed style → rendering test fails
+  origin: Plan A.2
+  phase: P5
+- id: INV-33
+  invariant: Every approval needs fresh hardware-key re-auth + rationale; all approvals take effect on signing
+  negative_test: approval without re-auth or rationale → refused
+  origin: Plan/UI, revised §0.4
+  phase: P0
+- id: INV-34
+  invariant: Coherence checks at policy load (§20.2)
+  negative_test: incoherent policy → cannot activate even when signed
+  origin: Plan G
+  phase: P0
+- id: INV-35
+  invariant: A venue trades only in state TRADE_ENABLED, set by a signed policy with a valid access record
+  negative_test: order to a PAPER_ENABLED venue → rejected VENUE_NOT_TRADE_ENABLED
+  origin: new
+  phase: P3
+- id: INV-36
+  invariant: Key with withdrawal permission is refused; daily re-probe detecting it suspends the venue
+  negative_test: probe returns withdraw=true → SUSPENDED + S1
+  origin: UI 8.11, new
+  phase: P3
+- id: INV-37
+  invariant: Read slots cannot hold trade-capable keys
+  negative_test: trade-capable key in read slot → refused
+  origin: new
+  phase: P3
+- id: INV-38
+  invariant: ccxt-generic connector can never be TRADE_ENABLED
+  negative_test: state change request → refused
+  origin: new
+  phase: P3
+- id: INV-39
+  invariant: No order is sent after start or failover until restart reconciliation passes; only the fenced leader may send
+  negative_test: order before reconciliation → rejected
+  origin: new
+  phase: P3
+- id: INV-40
+  invariant: Unknown order state is never treated as rejected
+  negative_test: ambiguous venue error → reconciliation, not resubmit
+  origin: new
+  phase: P3
+- id: INV-41
+  invariant: Deposits never count as P&L; HWM on unit value; tier dwell restarts on a floor-crossing deposit
+  negative_test: deposit → no P&L entry, DD unchanged
+  origin: new
+  phase: P3.5
+- id: INV-42
+  invariant: Stress battery PASS required for every policy proposal
+  negative_test: proposal without battery run → cannot activate
+  origin: new
+  phase: P3.5
+- id: INV-43
+  invariant: 'No geo-circumvention: no VPN/proxy egress outside the declared residence, no misstated residence; a venue is TRADE_ENABLED only if its access record''s residence equals declared_residence
+    and holds the venue''s confirmation'
+  negative_test: egress IP country ≠ declared residence → all trading blocked; access record residence mismatch → refused
+  origin: new
+  phase: P3

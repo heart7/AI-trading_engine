@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/policy_object.json",
+  "title": "UCHFE declared parameter policy object (spec §20.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy_version", "base_currency", "timeframe", "tiers", "universe", "signal", "stops",
+    "sizing", "cost", "perps", "risk", "collateral", "allocator", "governance", "validation",
+    "operating_costs_usd_month", "tax", "regime", "ui", "venues", "resilience"
+  ],
+  "$defs": {
+    "frac": {"type": "number", "minimum": 0, "maximum": 1},
+    "posnum": {"type": "number", "exclusiveMinimum": 0},
+    "posint": {"type": "integer", "minimum": 1},
+    "tier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nav_up", "nav_down", "sleeves", "n_max", "r"],
+      "properties": {
+        "nav_up": {"$ref": "#/$defs/posnum"},
+        "nav_down": {"$ref": "#/$defs/posnum"},
+        "sleeves": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["A_long", "B_short", "B_long"]}
+        },
+        "n_max": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/posint"},
+          "propertyNames": {"enum": ["A", "B", "B_short", "B_long"]}
+        },
+        "r": {
+          "type": "object",
+          "additionalProperties": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.02},
+          "propertyNames": {"enum": ["A", "B"]}
+        },
+        "budget": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/frac"},
+          "propertyNames": {"enum": ["A_min", "B_short_max", "B_long_max"]}
+        }
+      }
+    },
+    "connector": {
+      "enum": ["binance-spot", "binance-usdm", "bybit-v5-spot", "bybit-v5-linear",
+               "kraken-spot", "kraken-futures", "ccxt-generic"]
+    }
+  },
+  "properties": {
+    "policy_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "base_currency": {"const": "USD"},
+    "timeframe": {"const": "4h"},
+    "tiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["T1", "T2", "T3", "T4", "upgrade_dwell_days", "downgrade_dwell_days", "new_sleeve_ramp"],
+      "properties": {
+        "T1": {"$ref": "#/$defs/tier"},
+        "T2": {"$ref": "#/$defs/tier"},
+        "T3": {"$ref": "#/$defs/tier"},
+        "T4": {"$ref": "#/$defs/tier"},
+        "upgrade_dwell_days": {"$ref": "#/$defs/posint"},
+        "downgrade_dwell_days": {"$ref": "#/$defs/posint"},
+        "new_sleeve_ramp": {
+          "type": "object", "additionalProperties": false, "required": ["factor", "days"],
+          "properties": {"factor": {"$ref": "#/$defs/frac"}, "days": {"$ref": "#/$defs/posint"}}
+        }
+      }
+    },
+    "universe": {
+      "type": "object", "additionalProperties": false, "required": ["A", "B"],
+      "properties": {
+        "A": {
+          "type": "object", "additionalProperties": false, "required": ["mandatory", "default", "research"],
+          "properties": {
+            "mandatory": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+            "default": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+            "research": {"const": "top15_point_in_time"}
+          }
+        },
+        "B": {
+          "type": "object", "additionalProperties": false,
+          "required": ["max", "min_vol_usd_30d_median", "min_oi_usd", "min_history_days"],
+          "properties": {
+            "max": {"$ref": "#/$defs/posint"},
+            "min_vol_usd_30d_median": {"$ref": "#/$defs/posnum"},
+            "min_oi_usd": {"$ref": "#/$defs/posnum"},
+            "min_history_days": {"$ref": "#/$defs/posint"}
+          }
+        }
+      }
+    },
+    "signal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["breakout_lookbacks_d", "momentum_lookbacks_m", "clip_t", "ema_fast", "ema_slow", "atr_n", "atr_timeframe", "T_entry"],
+      "properties": {
+        "breakout_lookbacks_d": {"type": "array", "items": {"$ref": "#/$defs/posint"}, "minItems": 1},
+        "momentum_lookbacks_m": {"type": "array", "items": {"$ref": "#/$defs/posint"}, "minItems": 1},
+        "clip_t": {"$ref": "#/$defs/posnum"},
+        "ema_fast": {"$ref": "#/$defs/posint"},
+        "ema_slow": {"$ref": "#/$defs/posint"},
+        "atr_n": {"$ref": "#/$defs/posint"},
+        "atr_timeframe": {"const": "1d"},
+        "T_entry": {"type": "number"}
+      }
+    },
+    "stops": {
+      "type": "object", "additionalProperties": false,
+      "required": ["k_stop", "k_trail", "time_stop", "gap_tolerance"],
+      "properties": {
+        "k_stop": {"$ref": "#/$defs/posnum"},
+        "k_trail": {"$ref": "#/$defs/posnum"},
+        "time_stop": {
+          "type": "object", "additionalProperties": false, "required": ["flag_x", "reduce_x", "default_dwell_bars"],
+          "properties": {
+            "flag_x": {"$ref": "#/$defs/posnum"},
+            "reduce_x": {"$ref": "#/$defs/posnum"},
+            "default_dwell_bars": {"$ref": "#/$defs/posint"}
+          }
+        },
+        "gap_tolerance": {"$ref": "#/$defs/frac"}
+      }
+    },
+    "sizing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kelly_k", "posterior_q", "n0", "ewma_lambda", "sigma_star", "stress_cut",
+                   "per_instrument_risk_share_max", "per_pair_notional_max", "cluster", "rebalance_band"],
+      "properties": {
+        "kelly_k": {"$ref": "#/$defs/frac"},
+        "posterior_q": {"$ref": "#/$defs/frac"},
+        "n0": {"$ref": "#/$defs/posint"},
+        "ewma_lambda": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "sigma_star": {
+          "type": "object", "additionalProperties": false, "required": ["value", "anchor", "mc_run_id"],
+          "properties": {
+            "value": {"type": ["number", "null"], "exclusiveMinimum": 0},
+            "anchor": {"$ref": "#/$defs/posnum"},
+            "mc_run_id": {"type": ["string", "null"]}
+          }
+        },
+        "stress_cut": {"$ref": "#/$defs/frac"},
+        "per_instrument_risk_share_max": {"$ref": "#/$defs/frac"},
+        "per_pair_notional_max": {"$ref": "#/$defs/frac"},
+        "cluster": {
+          "type": "object", "additionalProperties": false, "required": ["rho_stress", "open_risk_cap"],
+          "properties": {"rho_stress": {"$ref": "#/$defs/frac"}, "open_risk_cap": {"$ref": "#/$defs/frac"}}
+        },
+        "rebalance_band": {"type": "number"}
+      }
+    },
+    "cost": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cost_R_max", "slippage_quantile", "perps", "divergence_block"],
+      "properties": {
+        "cost_R_max": {"type": "number", "exclusiveMinimum": 0},
+        "slippage_quantile": {"$ref": "#/$defs/frac"},
+        "perps": {
+          "type": "object", "additionalProperties": false, "required": ["k_cost", "lambda_carry"],
+          "properties": {"k_cost": {"$ref": "#/$defs/posnum"}, "lambda_carry": {"type": "number", "minimum": 0}}
+        },
+        "divergence_block": {"$ref": "#/$defs/frac"}
+      }
+    },
+    "perps": {
+      "type": "object", "additionalProperties": false,
+      "required": ["margin_mode", "phi", "liq_buffer", "max_eff_leverage", "gross_max", "net_directional_max", "funding_time_stop_R", "adl"],
+      "properties": {
+        "margin_mode": {"const": "ISOLATED"},
+        "phi": {"$ref": "#/$defs/frac"},
+        "liq_buffer": {
+          "type": "object", "additionalProperties": false, "required": ["x_stop", "min_distance"],
+          "properties": {"x_stop": {"$ref": "#/$defs/posnum"}, "min_distance": {"$ref": "#/$defs/frac"}}
+        },
+        "max_eff_leverage": {"type": "number", "minimum": 1},
+        "gross_max": {"$ref": "#/$defs/posnum"},
+        "net_directional_max": {"$ref": "#/$defs/frac"},
+        "funding_time_stop_R": {
+          "type": "object", "additionalProperties": false, "required": ["flag", "reduce"],
+          "properties": {"flag": {"$ref": "#/$defs/posnum"}, "reduce": {"$ref": "#/$defs/posnum"}}
+        },
+        "adl": {
+          "type": "object", "additionalProperties": false, "required": ["reduce_new_exposure", "reduce_only_min_positions"],
+          "properties": {"reduce_new_exposure": {"$ref": "#/$defs/frac"}, "reduce_only_min_positions": {"$ref": "#/$defs/posint"}}
+        }
+      }
+    },
+    "risk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ladder", "es975_mult", "p_dd20_1y_max", "venue_exposure_max", "ttf_ceiling_min", "circuit_breaker_dwell_min"],
+      "properties": {
+        "ladder": {
+          "type": "object", "additionalProperties": false,
+          "required": ["daily_stop", "rolling_5d_suspend", "rolling_20d_halve_r", "dd", "flatten_deadman_hours"],
+          "properties": {
+            "daily_stop": {"$ref": "#/$defs/frac"},
+            "rolling_5d_suspend": {"$ref": "#/$defs/frac"},
+            "rolling_20d_halve_r": {"$ref": "#/$defs/frac"},
+            "dd": {
+              "type": "object", "additionalProperties": false,
+              "required": ["halve", "suspend_downgrade", "flatten_decision", "terminate"],
+              "properties": {
+                "halve": {"$ref": "#/$defs/frac"},
+                "suspend_downgrade": {"$ref": "#/$defs/frac"},
+                "flatten_decision": {"$ref": "#/$defs/frac"},
+                "terminate": {"$ref": "#/$defs/frac"}
+              }
+            },
+            "flatten_deadman_hours": {"$ref": "#/$defs/posint"}
+          }
+        },
+        "es975_mult": {"$ref": "#/$defs/posnum"},
+        "p_dd20_1y_max": {"$ref": "#/$defs/frac"},
+        "venue_exposure_max": {"$ref": "#/$defs/frac"},
+        "ttf_ceiling_min": {
+          "type": "object", "additionalProperties": false, "required": ["A", "B"],
+          "properties": {"A": {"$ref": "#/$defs/posint"}, "B": {"$ref": "#/$defs/posint"}}
+        },
+        "circuit_breaker_dwell_min": {"$ref": "#/$defs/posint"}
+      }
+    },
+    "collateral": {
+      "type": "object", "additionalProperties": false,
+      "required": ["spot_operating_buffer", "perp_operating_buffer", "venue_collateral_cap", "issuer_cap", "off_exchange_min", "par_band"],
+      "properties": {
+        "spot_operating_buffer": {"$ref": "#/$defs/frac"},
+        "perp_operating_buffer": {"$ref": "#/$defs/frac"},
+        "venue_collateral_cap": {"$ref": "#/$defs/frac"},
+        "issuer_cap": {"$ref": "#/$defs/frac"},
+        "off_exchange_min": {"$ref": "#/$defs/frac"},
+        "par_band": {"$ref": "#/$defs/frac"}
+      }
+    },
+    "allocator": {
+      "type": "object", "additionalProperties": false, "required": ["min_dwell_days", "max_changes_per_year"],
+      "properties": {"min_dwell_days": {"$ref": "#/$defs/posint"}, "max_changes_per_year": {"$ref": "#/$defs/posint"}}
+    },
+    "governance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approvals", "hypothesis_budget_per_year", "promotions", "rho_paired_provisional"],
+      "properties": {
+        "approvals": {
+          "type": "object", "additionalProperties": false,
+          "required": ["signers_required", "cooling_off_hours", "reauth", "rationale_required"],
+          "properties": {
+            "signers_required": {"$ref": "#/$defs/posint"},
+            "cooling_off_hours": {"type": "number", "minimum": 0},
+            "reauth": {"const": "webauthn"},
+            "rationale_required": {"const": true}
+          }
+        },
+        "hypothesis_budget_per_year": {"$ref": "#/$defs/posint"},
+        "promotions": {
+          "type": "object", "additionalProperties": false, "required": ["per_sleeve_per_quarter", "programme_per_year"],
+          "properties": {"per_sleeve_per_quarter": {"$ref": "#/$defs/posint"}, "programme_per_year": {"$ref": "#/$defs/posint"}}
+        },
+        "rho_paired_provisional": {"$ref": "#/$defs/frac"}
+      }
+    },
+    "validation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["null_test", "shadow_days", "canary", "recon_min"],
+      "properties": {
+        "null_test": {
+          "type": "object", "additionalProperties": false,
+          "required": ["metric", "ci", "pass", "dsr_min", "block_days"],
+          "properties": {
+            "metric": {"const": "daily_net_sharpe"},
+            "ci": {"const": "one_sided_95"},
+            "pass": {"const": "lower_bound_gt_0"},
+            "dsr_min": {"$ref": "#/$defs/frac"},
+            "block_days": {"$ref": "#/$defs/posint"}
+          }
+        },
+        "shadow_days": {"$ref": "#/$defs/posint"},
+        "canary": {
+          "type": "object", "additionalProperties": false, "required": ["days", "capital_max"],
+          "properties": {"days": {"$ref": "#/$defs/posint"}, "capital_max": {"$ref": "#/$defs/frac"}}
+        },
+        "recon_min": {"$ref": "#/$defs/frac"}
+      }
+    },
+    "operating_costs_usd_month": {"type": "number", "minimum": 0},
+    "tax": {
+      "type": "object", "additionalProperties": false,
+      "required": ["jurisdiction", "rule_version", "matching", "report_currency", "annual_exempt", "reserve_rate"],
+      "properties": {
+        "jurisdiction": {"type": "string"},
+        "rule_version": {"type": "string"},
+        "matching": {"type": "array", "items": {"enum": ["same_day", "30_day", "s104"]}},
+        "report_currency": {"type": "string"},
+        "annual_exempt": {"type": ["string", "number"]},
+        "reserve_rate": {"type": ["string", "number"]}
+      }
+    },
+    "regime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authority", "H_days", "confirm_bars", "ess_min", "theta0", "theta1", "ece_warn", "ece_fail"],
+      "properties": {
+        "authority": {"enum": ["T0", "T1"]},
+        "H_days": {"$ref": "#/$defs/posint"},
+        "confirm_bars": {"$ref": "#/$defs/posint"},
+        "ess_min": {"$ref": "#/$defs/posint"},
+        "theta0": {"$ref": "#/$defs/frac"},
+        "theta1": {"$ref": "#/$defs/frac"},
+        "ece_warn": {"$ref": "#/$defs/frac"},
+        "ece_fail": {"$ref": "#/$defs/frac"},
+        "step6_run_id": {"type": ["string", "null"]}
+      }
+    },
+    "ui": {
+      "type": "object", "additionalProperties": false, "required": ["n_eff_warning_floor"],
+      "properties": {"n_eff_warning_floor": {"$ref": "#/$defs/posint"}}
+    },
+    "venues": {
+      "type": "object", "additionalProperties": false,
+      "required": ["execution_allowed", "data_sources", "min_certification_sources", "clock_skew_max_ms",
+                   "key_rotation_days", "access_record_max_days", "dead_man_refresh_s", "per_venue_exposure_max",
+                   "hold_exchange_tokens", "idle_cash", "access_record_review_days", "declared_residence", "geo_circumvention"],
+      "properties": {
+        "execution_allowed": {
+          "type": "object", "additionalProperties": false, "required": ["A_long", "B_short", "B_long"],
+          "properties": {
+            "A_long": {"type": "array", "items": {"$ref": "#/$defs/connector"}, "uniqueItems": true},
+            "B_short": {"type": "array", "items": {"$ref": "#/$defs/connector"}, "uniqueItems": true},
+            "B_long": {"type": "array", "items": {"$ref": "#/$defs/connector"}, "uniqueItems": true}
+          }
+        },
+        "data_sources": {"type": "array", "items": {"$ref": "#/$defs/connector"}, "uniqueItems": true},
+        "min_certification_sources": {"$ref": "#/$defs/posint"},
+        "clock_skew_max_ms": {"$ref": "#/$defs/posint"},
+        "key_rotation_days": {
+          "type": "object", "additionalProperties": false, "required": ["remind", "block_trade"],
+          "properties": {"remind": {"$ref": "#/$defs/posint"}, "block_trade": {"$ref": "#/$defs/posint"}}
+        },
+        "access_record_max_days": {"$ref": "#/$defs/posint"},
+        "dead_man_refresh_s": {"$ref": "#/$defs/posint"},
+        "per_venue_exposure_max": {"$ref": "#/$defs/frac"},
+        "hold_exchange_tokens": {"const": false},
+        "idle_cash": {"type": "string"},
+        "access_record_review_days": {"$ref": "#/$defs/posint"},
+        "declared_residence": {"type": "string", "pattern": "^[A-Z]{2}$"},
+        "geo_circumvention": {"const": "forbidden"}
+      }
+    },
+    "resilience": {
+      "type": "object", "additionalProperties": false, "required": ["rpo_s", "rto_min", "s1_unacked_suspend_h"],
+      "properties": {"rpo_s": {"$ref": "#/$defs/posint"}, "rto_min": {"$ref": "#/$defs/posint"}, "s1_unacked_suspend_h": {"$ref": "#/$defs/posint"}}
+    }
+  }
+}
