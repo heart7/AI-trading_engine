@@ -27,6 +27,8 @@ jobs:
         run: python tools/uchfe.py coherence --mode PAPER
       - name: Reproducibility spot-check (replay twice vs golden hash)
         run: python tools/repro_check.py
+      - name: Adapter conformance suite (simulated venue)
+        run: python tools/uchfe.py conformance --connector kraken-spot --out runs/ci/conformance
       - name: Tests and negative-test suite (with run record)
         env:
           UCHFE_INVARIANT_REPORT: runs/ci/invariants.json

@@ -31,3 +31,9 @@ The signature covers the policy hash and your written reason, so neither can be 
 - Item 5: monthly operating-cost budget (currently ASSUMED at $200).
 - Item 10: ask Binance and Bybit in writing whether the accounts may be used while you live in the UK.
 - Decision 0001 (docs/decisions): how evidence-dependent coherence checks bind in PAPER.
+
+## 4. For P3 (execution), when you are ready
+Nothing here is needed for PAPER mode. None of it should be pasted into the chat or the repo.
+- Open a UK Kraken account (spot, USD pairs) if you have not yet (spec §21 item 10a), and ask Kraken whether its demo environment covers spot so the conformance suite can run there.
+- When a testnet run is wanted: create **read-only** and **trade-only** demo/testnet keys (never with withdrawal permission). They go into the secret store from Settings, not into this repo or the chat.
+- Binance and Bybit stay data-only unless each confirms in writing that a UK resident may trade on the account (INV-43).
