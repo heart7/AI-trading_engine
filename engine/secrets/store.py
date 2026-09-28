@@ -69,11 +69,14 @@ class VaultKV2SecretStore:
 
     def __init__(self, addr: str | None = None, token: str | None = None, mount: str = "uchfe"):
         self.addr = (addr or os.environ["VAULT_ADDR"]).rstrip("/")
+        if not self.addr.startswith("https://"):
+            raise ValueError("Vault address must be https")
         self._token = SecretValue(token or os.environ["VAULT_TOKEN"])
         self.mount = mount
 
     def _req(self, method: str, path: str, body: dict | None = None) -> dict:
-        req = urllib.request.Request(f"{self.addr}/v1/{self.mount}/{path}", method=method,
+        req = urllib.request.Request(  # noqa: S310 - https enforced in __init__
+            f"{self.addr}/v1/{self.mount}/{path}", method=method,
                                      data=json.dumps(body).encode() if body is not None else None,
                                      headers={"X-Vault-Token": self._token.reveal(), "Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310 - fixed https address from config
