@@ -93,11 +93,16 @@ class Trade:
 class ReplayConfig:
     nav0: float = 30_000.0
     mode: str = "PAPER"
-    mu_q_daily: float | None = None  # from the harness; None means sizing returns 0 (spec §5.5)
+    # From the harness: a constant, or a per-instrument per-bar array (walk-forward). None/NaN means size 0 (§5.5).
+    mu_q_daily: float | Mapping[str, np.ndarray] | None = None
     sigma_star: float | None = None  # falls back to the policy anchor, flagged ASSUMED
     evidence_on_file: bool = True  # PAPER needs no validation evidence; SHADOW+ do (§9.3)
     engine_running: bool = True
     keep_intents_for_last_cycles: int = 6
+    vol_deflation: bool = True
+    es_mult: float | None = None  # research override for the ES-limit study; None reads policy
+    components: tuple[str, ...] = ("B", "M", "Z")
+    kelly_enabled: bool = True  # research plane only (see research/harness/steps.py)
 
 
 @dataclass
@@ -130,6 +135,13 @@ class ReplayResult:
                 "result_hash": self.result_hash, "class": "REPORTED" if "FIXTURE" in " ".join(self.signals) else "DERIVED"}
 
 
+def _mu_q(src, k: str, i: int) -> float | None:
+    if src is None or isinstance(src, (int, float)):
+        return src
+    v = float(src[k][i])
+    return None if math.isnan(v) else v
+
+
 def _loss_over(navs: list[float], nav: float, nav0: float, days: int) -> float:
     """Rolling net loss over `days` daily closes, as a positive fraction of NAV."""
     if len(navs) <= days:
@@ -144,6 +156,10 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
            costs: CostModel | None = None) -> ReplayResult:
     cfg, costs = cfg or ReplayConfig(), costs or CostModel()
     p = SignalParams.from_policy(policy)
+    if cfg.components != p.components:
+        from dataclasses import replace as _replace
+        p = _replace(p, components=tuple(cfg.components))
+    es_mult = cfg.es_mult if cfg.es_mult is not None else policy["risk"]["es975_mult"]
     n = len(series[0].c)
     grid = series[0].open_time
     for s in series:
@@ -290,13 +306,14 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
                 cg = cgr.gate
                 d = cgr.d
                 si = SizingInputs(nav=nav, r_tier=r_tier, d=d, sigma_daily=float(g["sigma_daily"][i]),
-                                  mu_q_daily=cfg.mu_q_daily, kelly_k=sz["kelly_k"], es_mult=rk["es975_mult"],
+                                  mu_q_daily=_mu_q(cfg.mu_q_daily, k, i), kelly_k=sz["kelly_k"], es_mult=es_mult,
                                   rho_stress=sz["cluster"]["rho_stress"], depth_50bp_usd=s.depth_50bp_usd,
                                   volume_usd_per_min=s.volume_usd_per_min, ttf_ceiling_min=rk["ttf_ceiling_min"]["A"],
                                   per_pair_notional_max=sz["per_pair_notional_max"],
                                   per_instrument_risk_share_max=sz["per_instrument_risk_share_max"],
                                   open_risk_cap=sz["cluster"]["open_risk_cap"], sigma_star_annual=sigma_star,
-                                  regime_authority=policy["regime"]["authority"], book=book, gross_now=gross)
+                                  regime_authority=policy["regime"]["authority"], book=book, gross_now=gross,
+                                  vol_deflation=cfg.vol_deflation, kelly_enabled=cfg.kelly_enabled)
                 res = compute_size(si)
                 if B is not None and B > 0 and T >= p.T_entry:
                     key = res.zero_reason or res.binding_limit
