@@ -26,3 +26,17 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 
 ## Environment limits seen while building
 - The build container cannot reach exchange APIs (Kraken, Binance and Bybit connections are refused by its network policy). P1 ingest code will be built and tested against FIXTURE data; certifying real history needs a runner with exchange access or a data vendor (spec §21 item 11).
+
+## P1 Data
+
+| Deliverable | Status | Where |
+|---|---|---|
+| 4h bar model, UTC alignment, daily bars aggregated from 4h (incomplete days dropped, never filled) | RV | `engine/data/bars.py` |
+| Certification: two-source agreement, single-venue flag, invalid-bar quarantine, gap report, dispersion > 3× normal alert, venue splices, era tags, content hash; FIXTURE never certified | RV | `engine/data/certify.py` |
+| Quality report per dataset; build without one cannot be certified | RV | `engine/data/certify.py` |
+| Point-in-time listing table; constant universe rejected (INV-21) | RV | `engine/data/listings.py` |
+| Append-only hash-chained bar store (local WORM stand-in) | RV | `engine/data/store.py` |
+| Kraken / Binance / Bybit public 4h OHLCV parsers; USDT re-quoted to USD at a certified rate, never par | RV (parsers), IU (live fetch) | `engine/data/sources/public_ohlc.py` |
+| FIXTURE dataset build (4 pairs × 9 years) | RV | `tools/build_dataset.py --fixture` |
+| History back to earliest listing; perps funding/specs ingest | SN — blocked | needs exchange network access and a history vendor (§21 item 11) |
+| **P1 exit gate** (quality reports shipped for real data; listing table complete) | not met | blocked on data access |
