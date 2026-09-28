@@ -25,6 +25,8 @@ jobs:
         run: ruff check .
       - name: Policy loads and is coherent for PAPER
         run: python tools/uchfe.py coherence --mode PAPER
+      - name: Reproducibility spot-check (replay twice vs golden hash)
+        run: python tools/repro_check.py
       - name: Tests and negative-test suite (with run record)
         env:
           UCHFE_INVARIANT_REPORT: runs/ci/invariants.json

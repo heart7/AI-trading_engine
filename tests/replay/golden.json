@@ -1,0 +1,14 @@
+{
+  "policy_hash": "6ae1ebf08e55252efbada0e588c2a3f15450afdc05bab7b1a9a92823e9a6209a",
+  "result_hash": "6f8b96730ce9e15c1d241347ca6a69cfd240f7dc879d5a78c2058c7c30408226",
+  "trades": 43,
+  "funnel": {
+    "evaluated": 22603,
+    "data_admissible": 18283,
+    "breakout": 494,
+    "t_entry": 46,
+    "cost_gate": 46,
+    "risk_caps": 43,
+    "entered": 43
+  }
+}
