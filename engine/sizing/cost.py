@@ -1,6 +1,7 @@
 """Strategy A cost gate (spec §5.4, INV-06). It cannot be bypassed: there is no flag to skip it."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -28,7 +29,7 @@ def cost_gate(*, k_stop: float, atr_daily: float, entry_px: float, fee_roundtrip
               slippage_q75: CostInput, cost_R_max: float, now: datetime) -> CostGateResult:
     d = k_stop * atr_daily / entry_px
     parts = (fee_roundtrip, spread_at_size, slippage_q75)
-    c = sum(x.value for x in parts)
+    c = math.fsum(x.value for x in parts)
     if not all(x.fresh(now) for x in parts):
         return CostGateResult(False, "COST_INPUT_STALE", d, c, None)
     if d <= 0:

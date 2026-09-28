@@ -6,6 +6,7 @@ evidence, cost or risk-budget gates (INV-07).
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 LADDER_ORDER = [
@@ -115,4 +116,4 @@ def check_add(*, open_R: float, adds_so_far: int, gates_pass: bool, new_combined
 
 
 def cluster_ok(open_risk_usd: list[float], new_risk_usd: float, open_risk_cap: float, nav: float) -> bool:
-    return sum(open_risk_usd) + new_risk_usd <= open_risk_cap * nav + 1e-9
+    return math.fsum(open_risk_usd) + new_risk_usd <= open_risk_cap * nav + 1e-9

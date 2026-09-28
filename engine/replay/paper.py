@@ -115,7 +115,8 @@ class ReplayResult:
     signals: dict[str, dict[str, np.ndarray]]
     stops: dict[str, list[tuple[int, float]]]
     assumed: list[str]
-    result_hash: str = ""
+    result_hash: str = ""  # exact, bit-for-bit within one environment
+    fingerprint: str = ""  # decisions + values to 9 significant digits: stable across CPUs and numpy SIMD paths
 
     def summary(self) -> dict:
         r = self.daily_returns
@@ -180,7 +181,7 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
     tail_from = max(0, n - cfg.keep_intents_for_last_cycles)
 
     def nav_at(i: int) -> float:
-        return cash + sum(pos.qty * by_id[k].c[i] for k, pos in positions.items())
+        return cash + math.fsum(pos.qty * by_id[k].c[i] for k, pos in positions.items())
 
     def close_position(k: str, px: float, i: int, reason: str) -> None:
         nonlocal cash
@@ -267,7 +268,7 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
         open_risk = [max(0.0, positions[k].qty * (positions[k].entry_px - positions[k].stop.active)) for k in held]
         book = [Holding(positions[k].qty * by_id[k].c[i], float(sig[k]["sigma_daily"][i]) if not math.isnan(sig[k]["sigma_daily"][i]) else 0.05)
                 for k in held]
-        gross = sum(h.notional for h in book)
+        gross = math.fsum(h.notional for h in book)
         for s in series:
             k, g = s.instrument_id, sig[s.instrument_id]
             if k in positions:
@@ -332,7 +333,7 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
                 book.append(Holding(size_usd, float(g["sigma_daily"][i])))
 
     # the last bar's decisions have no next bar to fill in
-    funnel["entered"] = sum(1 for _ in trades) + len(positions)
+    funnel["entered"] = math.fsum(1 for _ in trades) + len(positions)
     for k in list(positions):
         close_position(k, float(by_id[k].c[-1]), n - 1, "END_OF_REPLAY")
     dt = np.array([t for t, _ in daily_navs], dtype=np.int64)
@@ -343,4 +344,8 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
     res.result_hash = content_hash({
         "trades": [[t.instrument_id, t.entry_time, t.exit_time, repr(t.entry_px), repr(t.exit_px), repr(t.qty), t.exit_reason] for t in trades],
         "equity": [repr(float(x)) for x in eq[::6]], "funnel": funnel})
+    g = lambda x: f"{float(x):.9g}"  # noqa: E731
+    res.fingerprint = content_hash({
+        "trades": [[t.instrument_id, t.entry_time, t.exit_time, g(t.entry_px), g(t.exit_px), g(t.qty), t.exit_reason] for t in trades],
+        "equity": [g(x) for x in eq[::6]], "funnel": funnel})
     return res
