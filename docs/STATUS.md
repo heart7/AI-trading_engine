@@ -176,3 +176,19 @@ Run it: `python -m engine.bff.server` then open http://127.0.0.1:8710/ (PAPER, F
 | **P6 exit gate** (≥ 90 days SHADOW with recon ≥ 99.9%, cost divergence < 25%, zero H1/D1) | not met | needs §9.3 steps on real history, then 90 days of live public data |
 
 Run the drill: `python tools/shadow.py drill`. On a machine with exchange access: see `docs/OWNER-ACTIONS.md` §5.
+
+## P7 Canary → Live (offline parts)
+
+| Deliverable | Status | Where |
+|---|---|---|
+| UK CGT matching per asset across all accounts: same day, 30 days (after every same-day match), section 104 pool; GBP at the certified daily rate; fees in allowable cost; tax years 6 Apr–5 Apr | RV on constructed cases | `engine/tax/uk.py` |
+| Reserve above the annual exempt amount; UNSET (never guessed) while the rate or exempt amount is undeclared | RV | `policy/tax/tax-uk-v1.yaml` (ASSUMED values null) |
+| Tax export: per-disposal matching CSV for the accountant, per-year summary | RV | `tools/tax_report.py` |
+| Perps tax treatment, loss carry-forward, Nigeria double-taxation position | SN — ASSUMED, for the accountant | §12.4 |
+| Canary and live-ramp capital caps per rung; nobody on call from CANARY up → STOP | RV | `engine/modes/canary.py`, `policy/oncall.yaml` (empty) |
+| Profit allocation: reinvest % change needs a signed PROFIT_ALLOCATION approval over the exact change; sweeps are human-executed transfer intents after the tax reserve | RV | `engine/governance/profit_allocation.py` |
+| Runbooks for every incident class the engine can open, plus dead-man defaults and the loss-review cadence; incident rows link their runbook | RV (test: no incident without a runbook) | `ops/runbooks/` |
+| Go-live checklist (coherence for LIVE, signed go-live hash, §9.3 steps, shadow and canary records, accountant sign-off bound to the tax config hash, reserve declared, on-call cover, access record) | RV; today 0 of 9 met | `engine/governance/golive.py`, `tools/golive.py` |
+| EOD and monthly reports (§12.7) | SN | next |
+| **P7 exit gate** (go-live policy hash signed; accountant sign-off on tax config) | not met | owner and accountant actions; P6 record first |
+

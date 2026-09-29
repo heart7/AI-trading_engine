@@ -1008,7 +1008,7 @@ def incidents(s: PaperSession) -> dict[str, Any]:
     inc = s.incidents.items
     rows = [{"code": i.code, "severity": i.severity, "scope": i.scope, "detail": i.detail, "open": i.open,
              "owner": "principal", "deadline": None, "what_system_did": "entries blocked in scope" if i.open else "resolved",
-             "resolution": i.resolution or None} for i in inc]
+             "resolution": i.resolution or None, "runbook": f"ops/runbooks/{i.code}.md"} for i in inc]
     return {"open": [r for r in rows if r["open"]], "resolved": [r for r in rows if not r["open"]], "dismiss_control": False,
             "resolution_rule": "Resolution requires a written rationale.", "deadman": [], "fixture": True}
 
