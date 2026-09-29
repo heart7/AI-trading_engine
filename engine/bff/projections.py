@@ -717,7 +717,34 @@ def validation(s: PaperSession) -> dict[str, Any]:
                         {"sleeve": "B_long", "maturity": maturity, "current": maturity[1], "steps": [], "distance": "not run",
                          "allowed_mode": "PAPER"}],
             "mode_ladder": ["PAPER", "SHADOW", "CANARY", "LIVE"], "source": "harness run records" if h else "no run records on file",
-            "promotion": {"enabled": False, "reason": "promotion needs every prior step PASS"}, "fixture": True}
+            "promotion": {"enabled": False, "reason": "promotion needs every prior step PASS"},
+            "shadow": shadow_record(SHADOW_JOURNAL), "fixture": True}
+
+
+SHADOW_JOURNAL = ROOT / "runs" / "shadow" / "journal.jsonl"
+
+
+def shadow_record(path: Path) -> dict[str, Any]:
+    """The P6 shadow journal, per rung, as text rows (§9.8). Empty until tools/shadow.py run has been started."""
+    from engine.shadow import metrics
+    from engine.shadow.runner import ShadowJournal
+    how = "Start it on a machine with exchange access: docs/OWNER-ACTIONS.md §5 (public data only, no keys, no orders)."
+    if not path.exists():
+        return {"status": "no shadow record yet", "rungs": [], "g2_days": 0, "how": how}
+    j = ShadowJournal(path)
+    try:
+        n = j.verify()
+    except Exception as e:  # a broken chain is shown, never hidden
+        return {"status": f"journal hash chain broken: {e}", "rungs": [], "g2_days": 0, "how": how}
+    recs = j.records()
+    rows = []
+    for rung in sorted({r["rung"] for r in recs}):
+        m = metrics.summarise(recs, rung)
+        rows.append({"rung": rung, "days": m["days"], "cycles": m["cycles"], "recon": fmt_number(m["recon"] * 100, digits=2) + "%",
+                     "cost_divergence": "no priced entries" if m["cost_divergence"] is None
+                     else fmt_number(m["cost_divergence"] * 100, digits=1) + "%",
+                     "h1_d1": len(m["h1_d1"]), "class": m["class"]})
+    return {"status": f"{n} cycles, hash chain intact", "rungs": rows, "g2_days": metrics.g2_fields(recs)["shadow_days"], "how": how}
 
 
 def strategy(s: PaperSession) -> dict[str, Any]:
@@ -1026,7 +1053,16 @@ def governance(s: PaperSession) -> dict[str, Any]:
                           source=a.get("source", "")) for a in assumed],
             "hypotheses": [{"id": h["id"], "status": h.get("status"), "run_ids": h.get("run_ids", []), "class": h.get("class")} for h in load()],
             "mode_ladder": ["PAPER", "SHADOW", "CANARY", "LIVE"], "external_review": "ASSUMED: before CANARY",
-            "on_call": "not required in PAPER", "coherence_rule": "A signature cannot activate an incoherent policy.", "fixture": True}
+            "on_call": "not required in PAPER", "coherence_rule": "A signature cannot activate an incoherent policy.",
+            "golive": _golive(s), "fixture": True}
+
+
+def _golive(s: PaperSession) -> list[dict[str, Any]]:
+    from engine.governance.golive import checklist, today_utc
+    from engine.policy.loader import load_policy
+    from engine.shadow.runner import ShadowJournal
+    journal = ShadowJournal(SHADOW_JOURNAL).records() if SHADOW_JOURNAL.exists() else []
+    return checklist(load_policy(), today=today_utc(), journal=journal)  # real-world status, not the fixture clock
 
 
 def exchanges(s: PaperSession) -> dict[str, Any]:

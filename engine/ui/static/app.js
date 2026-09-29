@@ -338,7 +338,10 @@ S.validation = function () {
         return [esc(s.step), '<span class="ico ' + ({PASS: "pass", FAIL: "fail"}[s.verdict.value] || "notrun") + '">' + ({PASS: "✓", FAIL: "✗"}[s.verdict.value] || "○") + '</span>' + fig(s.verdict), '<span class="mono">' + esc(s.run_id) + '</span>', esc(s.metric), esc(s.value), esc(s.ci), esc(s.falsification), s.gates_shadow ? "yes" : "no (regime T0→T1 only)"];
       }), "Validation ladder") : '<p class="note">No steps run for this sleeve.</p>';
       return U.sec("Validation · " + sl.sleeve, sl.distance + " · allowed mode " + sl.allowed_mode, U.panel("Maturity", mat) + '<div class="gap"></div>' + U.panel("§9.3 ladder", steps));
-    }).join("") + U.panel("Promotion", esc(d.promotion.reason), {fixture: false});
+    }).join("") + U.panel("Promotion", esc(d.promotion.reason), {fixture: false}) + '<div class="gap"></div>' +
+      U.panel("Shadow record (P6) · " + esc(d.shadow.status), d.shadow.rungs.length ? U.table(["Rung", "Full days", "Cycles", "Recon", "Cost divergence", "H1/D1", "Class"], d.shadow.rungs.map(function (r) {
+        return [esc(r.rung), esc(r.days), esc(r.cycles), esc(r.recon), esc(r.cost_divergence), esc(r.h1_d1), esc(r["class"])];
+      }), "Shadow record") + '<p class="note">Days counted toward G2: ' + esc(d.shadow.g2_days) + ' of 90.</p>' : '<p class="note">' + esc(d.shadow.how) + '</p>', {fixture: false});
   });
 };
 
@@ -397,7 +400,10 @@ S.governance = function () {
       '<div class="grid2 even sec">' + U.panel("Pending proposals", d.proposals.length ? "" : '<p class="note">None.</p>', {fixture: false}) + U.panel("Tier requests and venue access records", '<p class="note">None on file.</p>', {fixture: false}) + '</div>' +
       U.sec("ASSUMED register", "Every ASSUMED fact has an owner and a review date.", U.panel("ASSUMED", U.table(["Id", "Value"], d.assumed.map(function (a) { return [esc(a.id), fig(a)]; })), {fixture: false})) +
       U.sec("Hypothesis registry", "", U.panel("Hypotheses", U.table(["Id", "Status", "Runs"], d.hypotheses.map(function (h) { return [esc(h.id), esc(h.status), esc(h.run_ids.join(", ") || "—")]; })), {fixture: false})) +
-      U.panel("Mode ladder and reviews", U.kv([["Modes", esc(d.mode_ladder.join(" → "))], ["External review", esc(d.external_review)], ["On call", esc(d.on_call)]]), {fixture: false});
+      U.panel("Mode ladder and reviews", U.kv([["Modes", esc(d.mode_ladder.join(" → "))], ["External review", esc(d.external_review)], ["On call", esc(d.on_call)]]), {fixture: false}) +
+      U.sec("Go-live checklist", "Everything that stands between PAPER and LIVE, and who owns it.", U.panel("Go-live", U.table(["Item", "", "Requirement", "Detail", "Owner"], d.golive.map(function (g) {
+        return [esc(g.item), '<span class="ico ' + (g.met ? "pass" : "fail") + '">' + (g.met ? "✓" : "✗") + '</span>', esc(g.label), esc(g.detail), esc(g.owner)];
+      }), "Go-live checklist"), {fixture: false}));
   });
 };
 

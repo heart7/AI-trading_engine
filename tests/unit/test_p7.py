@@ -247,3 +247,47 @@ def test_reports_are_built_from_claims_with_a_references_appendix(kind):
 def test_report_module_formats_no_number_itself():
     src = (ROOT / "engine" / "reports" / "reports.py").read_text()
     assert not re.search(r"\{[^}]*:[^}]*[0-9]*[.,][0-9]*[fe%]\}", src) and "round(" not in src
+
+
+# ---------- new-sleeve ramp (§3.5) ----------
+def test_upgrade_starts_new_sleeves_at_half_risk_for_thirty_days():
+    from engine.router.router import TIERS, Eligibility, RouterState, StrategyRouter
+    a = Authenticator()
+    reg = ap.SignerRegistry.from_doc({"signers": [{"signer_id": "principal", "keys": [{"key_id": "k", "public_key": a.public_line}]}]})
+    now = datetime(2028, 1, 3, tzinfo=timezone.utc)
+    stmt = ap.statement("TIER_UPGRADE", "c" * 64, "principal", "Add the short book at Core+Short", now.isoformat())
+    va = ap.verify_approval(dict(stmt, signature=a.sign(ap.statement_bytes(stmt), ap.NAMESPACE)), reg,
+                            expected_action="TIER_UPGRADE", expected_subject="c" * 64)
+    router = StrategyRouter(DOC, RouterState(user_selected="T2", eligible="T3"))
+    el = Eligibility("T3", {t: [{"gate": "G1", "passed": True, "detail": ""}] for t in TIERS[1:]}, None, now.date())
+    assert router.request_up("T3", el, va, now) == "T3"
+    rB, rA = DOC["tiers"]["T3"]["r"]["B"], DOC["tiers"]["T3"]["r"]["A"]
+    assert router.r_tier("B_short", "LIVE", now + timedelta(days=10)) == pytest.approx(rB * 0.5)
+    assert router.r_tier("A_long", "LIVE", now + timedelta(days=10)) == rA  # A was already live at T2
+    assert router.r_tier("B_short", "LIVE", now + timedelta(days=30)) == rB
+    assert router.r_tier("B_short", "PAPER", now + timedelta(days=10)) == rB  # paper replays are not ramped
+
+
+# ---------- surfacing on the Validation and Governance screens ----------
+def test_validation_screen_reads_the_shadow_journal(tmp_path):
+    from engine.bff import projections as P
+    from engine.shadow.runner import ShadowJournal
+    assert P.shadow_record(tmp_path / "none.jsonl")["status"] == "no shadow record yet"
+    j = ShadowJournal(tmp_path / "j.jsonl")
+    start = datetime(2027, 1, 1, tzinfo=timezone.utc)
+    for k in range(12):
+        j.append({"bar_close": (start + (k + 1) * timedelta(hours=4)).isoformat(), "rung": "SHADOW", "class": "OBSERVED",
+                  "instruments": [{"instrument_id": "kraken-spot:BTC/USD", "recon_ok": True}], "incidents": []})
+    r = P.shadow_record(tmp_path / "j.jsonl")
+    assert r["status"] == "12 cycles, hash chain intact" and r["g2_days"] == 2
+    assert r["rungs"][0] == {"rung": "SHADOW", "days": 2, "cycles": 12, "recon": "100.00%", "cost_divergence": "no priced entries",
+                             "h1_d1": 0, "class": "OBSERVED"}
+
+
+def test_governance_screen_carries_the_golive_checklist():
+    from engine.bff import projections as P
+    from tests.helpers.bff import session
+    g = P.governance(session())["golive"]
+    assert [x["item"] for x in g] == [f"L{k}" for k in range(1, 10)] and not any(x["met"] for x in g[1:2])
+    js = (ROOT / "engine" / "ui" / "static" / "app.js").read_text()
+    assert "Go-live checklist" in js and "Shadow record (P6)" in js
