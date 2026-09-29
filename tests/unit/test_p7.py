@@ -220,3 +220,30 @@ def test_incident_rows_link_their_runbook():
     s.incidents.open_incident("RECON_BREAK", "D1", "engine", "test")
     row = P.incidents(s)["open"][0]
     assert row["runbook"] == "ops/runbooks/RECON_BREAK.md" and (ROOT / row["runbook"]).exists()
+
+
+# ---------- reports (§12.7) ----------
+@pytest.mark.parametrize("kind", ["eod", "monthly"])
+def test_reports_are_built_from_claims_with_a_references_appendix(kind):
+    from engine.reports.reports import build, to_markdown
+    from engine.ui.render import walk_figures
+    from tests.helpers.bff import session
+    rep = build(session(), kind)
+    ids = [f["id"] for f in walk_figures(rep["sections"])]
+    assert ids and [r["id"] for r in rep["references"]] == ids
+    assert rep["narrative"]["class"] == "REPORTED" and set(rep["narrative"]["cites"]) <= set(ids)
+    assert rep["fixture"] and all(not f["render"]["exportable_as_evidence"] for f in walk_figures(rep["sections"]))
+    md = to_markdown(rep)
+    assert "FIXTURE data: certified false" in md and "## References" in md
+    for f in walk_figures(rep["sections"]):
+        assert f["render"]["display"] in md  # every number shown is the server's own rendering
+    if kind == "monthly":
+        titles = [s["title"] for s in rep["sections"]]
+        for need in ("Cost stack and hurdle", "Attribution (return decomposition)", "Attribution (process view)",
+                     "Tier eligibility", "Validation status", "Stress battery"):
+            assert need in titles
+
+
+def test_report_module_formats_no_number_itself():
+    src = (ROOT / "engine" / "reports" / "reports.py").read_text()
+    assert not re.search(r"\{[^}]*:[^}]*[0-9]*[.,][0-9]*[fe%]\}", src) and "round(" not in src

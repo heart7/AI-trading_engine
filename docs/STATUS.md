@@ -189,6 +189,6 @@ Run the drill: `python tools/shadow.py drill`. On a machine with exchange access
 | Profit allocation: reinvest % change needs a signed PROFIT_ALLOCATION approval over the exact change; sweeps are human-executed transfer intents after the tax reserve | RV | `engine/governance/profit_allocation.py` |
 | Runbooks for every incident class the engine can open, plus dead-man defaults and the loss-review cadence; incident rows link their runbook | RV (test: no incident without a runbook) | `ops/runbooks/` |
 | Go-live checklist (coherence for LIVE, signed go-live hash, §9.3 steps, shadow and canary records, accountant sign-off bound to the tax config hash, reserve declared, on-call cover, access record) | RV; today 0 of 9 met | `engine/governance/golive.py`, `tools/golive.py` |
-| EOD and monthly reports (§12.7) | SN | next |
+| EOD and monthly reports from claims only, references appendix, REPORTED narrative citing figure ids, stress battery and ASSUMED items due | RV on FIXTURE | `engine/reports/reports.py`, `tools/report.py` |
 | **P7 exit gate** (go-live policy hash signed; accountant sign-off on tax config) | not met | owner and accountant actions; P6 record first |
 
