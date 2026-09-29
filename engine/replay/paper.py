@@ -341,7 +341,8 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
             outcome = "ENTERED" if binding is None else ("ABSTAINED" if abstain else "REJECTED")
             if i >= tail_from:
                 intents_tail.append({"instrument_id": k, "bar_close": now.isoformat(), "sleeve": sleeve, "outcome": outcome,
-                                     "binding_gate": binding, "gate_ladder": ladder_rows})
+                                     "binding_gate": binding, "gate_ladder": ladder_rows,
+                                     "notional": float(size_usd) if binding is None else None})
             if binding is None and i + 1 < n:
                 pending_entries[k] = {"limit": px, "atr": float(a), "notional": size_usd, "max_risk": r_tier * nav}
                 held.append(k)

@@ -1,6 +1,6 @@
 # 0002 — Portfolio ES limit binds at about one position
 
-Status: open, owner decision requested 2026-09-28.
+Status: default applied 2026-09-29 (the principal asked the build to continue with its recommended defaults): **keep 1.5** as the spec says, and decide again once the harness has run on real history. No policy change, so nothing needs signing. Reversible.
 
 Spec §5.5 and §7.4 cap portfolio ES97.5 (1 day) at `es975_mult × r_tier × NAV` = 1.5 × 0.75% = 1.125% NAV at T2.
 One BTC position at 12.5% NAV with 3.5% daily vol already has a parametric ES of about 1.02% NAV. A second

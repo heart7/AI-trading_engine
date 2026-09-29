@@ -1,6 +1,6 @@
 # 0004 — Stress scenario S4 (total loss of a venue) fails under the 40% venue cap
 
-Status: open, owner decision requested 2026-09-28. Blocks SHADOW, not PAPER.
+Status: default chosen 2026-09-29 (the principal asked the build to continue with its recommended defaults): **option 1**, `venue_exposure_max` 0.20 until a second UK venue is added. Because this changes the signed policy, it exists only as the unsigned proposal `policy/proposals/policy-10.4.1-venue-cap.yaml` with its stress run; it takes effect only if the principal signs it. Blocks SHADOW, not PAPER.
 
 Spec §7.8 S4 assumes 100% loss of every asset at the largest-exposure venue and requires the loss to stay inside
 the 20% hard drawdown budget. The policy allows up to `risk.venue_exposure_max = 0.40` of NAV on one venue

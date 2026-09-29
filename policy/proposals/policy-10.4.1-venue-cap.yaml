@@ -1,0 +1,122 @@
+policy_version: "10.4.1"
+base_currency: USD
+timeframe: 4h
+
+tiers:
+  T1: {nav_up: 5000,   nav_down: 4000,   sleeves: [A_long], n_max: {A: 2}, r: {A: 0.0050}}
+  T2: {nav_up: 30000,  nav_down: 24000,  sleeves: [A_long], n_max: {A: 4}, r: {A: 0.0075}}
+  T3: {nav_up: 200000, nav_down: 160000, sleeves: [A_long, B_short], n_max: {A: 4, B_short: 4},
+       r: {A: 0.0075, B: 0.0020}, budget: {A_min: 0.70, B_short_max: 0.30}}
+  T4: {nav_up: 650000, nav_down: 520000, sleeves: [A_long, B_long, B_short], n_max: {A: 4, B: 10},
+       r: {A: 0.0075, B: 0.0020}, budget: {A_min: 0.40}}
+  upgrade_dwell_days: 30
+  downgrade_dwell_days: 5
+  new_sleeve_ramp: {factor: 0.5, days: 30}
+
+universe:
+  A: {mandatory: [BTC, XRP], default: [ETH, SOL], research: top15_point_in_time}
+  B: {max: 20, min_vol_usd_30d_median: 1.0e8, min_oi_usd: 5.0e7, min_history_days: 180}
+
+signal:
+  breakout_lookbacks_d: [30, 90, 180]     # close vs close
+  momentum_lookbacks_m: [1, 3, 6]
+  clip_t: 2
+  ema_fast: 20
+  ema_slow: 60
+  atr_n: 20
+  atr_timeframe: 1d
+  T_entry: 0.5
+
+stops:
+  k_stop: 2.0
+  k_trail: 3.0
+  time_stop: {flag_x: 2, reduce_x: 3, default_dwell_bars: 60}
+  gap_tolerance: 0.003
+
+sizing:
+  kelly_k: 0.25
+  posterior_q: 0.25
+  n0: 252
+  ewma_lambda: 0.94
+  sigma_star: {value: null, anchor: 0.10, mc_run_id: null}   # must be set by step 8
+  stress_cut: 0.5                                             # only when regime at T1
+  per_instrument_risk_share_max: 0.40
+  per_pair_notional_max: 0.35
+  cluster: {rho_stress: 0.85, open_risk_cap: 0.020}
+  rebalance_band: 0.20
+
+cost:
+  cost_R_max: 0.15
+  slippage_quantile: 0.75
+  perps: {k_cost: 2.0, lambda_carry: 1.0}
+  divergence_block: 0.25
+
+perps:
+  margin_mode: ISOLATED
+  phi: 0.50
+  liq_buffer: {x_stop: 3, min_distance: 0.20}
+  max_eff_leverage: 3.0
+  gross_max: 1.0
+  net_directional_max: 0.50
+  funding_time_stop_R: {flag: 0.25, reduce: 0.50}
+  adl: {reduce_new_exposure: 0.5, reduce_only_min_positions: 2}
+
+risk:
+  ladder:
+    daily_stop: 0.02
+    rolling_5d_suspend: 0.04
+    rolling_20d_halve_r: 0.08
+    dd: {halve: 0.08, suspend_downgrade: 0.12, flatten_decision: 0.16, terminate: 0.20}
+    flatten_deadman_hours: 48
+  es975_mult: 1.5
+  p_dd20_1y_max: 0.05
+  venue_exposure_max: 0.20
+  ttf_ceiling_min: {A: 30, B: 60}
+  circuit_breaker_dwell_min: 10
+
+collateral:
+  spot_operating_buffer: 0.10
+  perp_operating_buffer: 0.05
+  venue_collateral_cap: 0.20
+  issuer_cap: 0.25
+  off_exchange_min: 0.20
+  par_band: 0.005
+
+allocator: {min_dwell_days: 28, max_changes_per_year: 4}
+
+governance:
+  approvals: {signers_required: 1, cooling_off_hours: 0, reauth: webauthn, rationale_required: true}
+  hypothesis_budget_per_year: 40
+  promotions: {per_sleeve_per_quarter: 1, programme_per_year: 8}
+  rho_paired_provisional: 0.40
+
+validation:
+  null_test: {metric: daily_net_sharpe, ci: one_sided_95, pass: lower_bound_gt_0, dsr_min: 0.95, block_days: 20}
+  shadow_days: 90
+  canary: {days: 60, capital_max: 0.05}
+  recon_min: 0.999
+
+operating_costs_usd_month: 200        # ASSUMED, owner: principal
+tax: {jurisdiction: UK, rule_version: ASSUMED, matching: [same_day, 30_day, s104], report_currency: GBP, annual_exempt: ASSUMED, reserve_rate: ASSUMED}
+regime: {authority: T0, H_days: 730, confirm_bars: 2, ess_min: 30, theta0: 0.35, theta1: 0.55, ece_warn: 0.05, ece_fail: 0.08}
+ui: {n_eff_warning_floor: 30}
+
+venues:                       # instances are created in Settings -> Exchanges; this block holds policy only
+  execution_allowed:          # set only by signed policy; must match TRADE_ENABLED instances
+    A_long: [kraken-spot]                       # UK resident; Binance/Bybit need written venue confirmation first (INV-43)
+    B_short: []                                 # UK retail ban; only after G5
+    B_long: []
+  data_sources: [kraken-spot, binance-spot, bybit-v5-spot, binance-usdm, bybit-v5-linear, kraken-futures]
+  min_certification_sources: 2
+  clock_skew_max_ms: 500
+  key_rotation_days: {remind: 90, block_trade: 180}
+  access_record_max_days: 365
+  dead_man_refresh_s: 30
+  per_venue_exposure_max: 0.20
+  hold_exchange_tokens: false
+  idle_cash: USD
+  access_record_review_days: 180
+  declared_residence: GB
+  geo_circumvention: forbidden
+
+resilience: {rpo_s: 60, rto_min: 15, s1_unacked_suspend_h: 2}
