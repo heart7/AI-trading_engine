@@ -103,6 +103,7 @@ class ShadowRunner:
     evidence_class: str = "OBSERVED"  # FIXTURE for drills; a FIXTURE journal never counts toward a gate
     nav0: float = 30_000.0
     mu_q_daily: float | Mapping | None = None  # from the harness; None sizes to zero (§5.5)
+    admission: Any = None  # admissibility service hook (universe, listings, blackout); None = not checked
 
     def cycle(self, series: Sequence[Series], *, bar_close: datetime, now: datetime, loaded_policy_hash: str,
               rung: str, records: Iterable[StepRecord] = (), quotes: Mapping[str, Quote] | None = None) -> dict[str, Any]:
@@ -138,7 +139,7 @@ class ShadowRunner:
         evidence = mode == "PAPER" or allowed_mode(records) != "PAPER"  # PAPER needs no evidence; SHADOW+ do
         res = replay(ready, self.policy, StrategyRouter(self.policy),
                      ReplayConfig(nav0=self.nav0, mode=mode, mu_q_daily=self.mu_q_daily, evidence_on_file=evidence,
-                                  keep_intents_for_last_cycles=1), self.costs)
+                                  keep_intents_for_last_cycles=1, admission=self.admission), self.costs)
         intents = {x["instrument_id"]: x for x in res.intents_tail if x["bar_close"] == _iso(want + H4)}
         sig = self.policy["signal"]
         lam = self.policy["sizing"]["ewma_lambda"]

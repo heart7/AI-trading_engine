@@ -55,7 +55,7 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Decision clock: no intraday path | RV | `engine/portfolio/clock.py` |
 | Replay/PAPER engine with §9.7 fill model, persisted gate ladders, funnel counts | RV on FIXTURE | `engine/replay/paper.py` |
 | Reproducibility spot-check (golden hash) | RV locally, in CI from this PR | `tools/repro_check.py` |
-| Admissibility service §5.1 (time-to-flatten, blackout calendar, delisting notice) | SN — needs order-book data | P3 |
+| Admissibility service §5.1 (time-to-flatten, blackout calendar, delisting notice) | RV in P10 (universe, listings, notice, blackout, venue, TTF, cost gate); live book and listing feed inputs unchecked until connected | `engine/admissibility/service.py` |
 | Gap policy for real data inside the 180-day signal window | UQ | see note |
 
 **Findings from the fixture replay (FIXTURE data, REPORTED class, not evidence):**
@@ -218,3 +218,12 @@ Run the drill: `python tools/learn.py drill`. With a shadow record on file: `pyt
 | Data screen: drift board replaces "not run" | RV | `drift_board` in `engine/bff/projections.py` |
 | Bots & Models: learning outcomes (episodes, process-error rate, training set) and learner proposals vs live parameters, no Apply control | RV | `learning` in `engine/bff/projections.py` |
 | Operator tool: `tools/learn.py drift --history data/live` | RV | `tools/learn.py` |
+
+## P10 Admissibility service C1
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Service C1: universe, point-in-time listing, delisting notice, blackout, venue freshness, time-to-flatten, cost gate, history; first failure binds; `admissibility_claim` lists unchecked inputs | RV | `engine/admissibility/service.py` |
+| Governance-owned blackout calendar (empty until you declare windows) | RV | `policy/blackout.yaml` |
+| Decision-cycle hook: NOT_ADMISSIBLE gate blocks entries; unchanged decisions with an empty calendar (golden hash holds) | RV | `ReplayConfig.admission`, `ShadowRunner.admission`, `tools/shadow.py run` |
+| Data screen admissibility board: binding reason, checks not yet fed, blackout windows | RV | `admissibility_board` in `engine/bff/projections.py` |

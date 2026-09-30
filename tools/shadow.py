@@ -100,7 +100,10 @@ def cmd_run(a: argparse.Namespace) -> int:
                 print(f"{base}: order book unavailable ({e})", file=sys.stderr)
     if not series:
         return 2
-    runner = ShadowRunner(doc, frozen, journal, mu_q_daily=a.mu_q)
+    from engine.admissibility.service import AdmissibilityService, load_blackout
+    from engine.bff.session import base_of
+    svc = AdmissibilityService(doc, frozen, blackout=load_blackout())
+    runner = ShadowRunner(doc, frozen, journal, mu_q_daily=a.mu_q, admission=lambda k, t: svc.gate(base_of(k), t))
     rec = runner.cycle(series, bar_close=feed.last_close(now), now=now, loaded_policy_hash=pol.hash,
                        rung=_rung(Path(a.ladder)), quotes=quotes)
     print(json.dumps({k: rec[k] for k in ("bar_close", "rung", "incidents")}, default=str))

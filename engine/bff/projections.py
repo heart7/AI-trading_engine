@@ -750,6 +750,27 @@ def shadow_record(path: Path) -> dict[str, Any]:
 LEARNING_DIR = ROOT / "runs" / "learning"
 
 
+def admissibility_board(s: PaperSession) -> dict[str, Any]:
+    """Service C1 per pair at the last close (§5.1): binding reason, and which checks had no input yet."""
+    from engine.admissibility.service import AdmissibilityService, load_blackout
+    i = s.last_index()
+    close = s.bar_close(i)
+    wins = load_blackout()
+    svc = AdmissibilityService(s.policy, s.policy_hash, blackout=wins)
+    rows = []
+    for x in s.series:
+        claim = svc.evaluate(base_of(x.instrument_id), close, T=_fnum(s.result.signals[x.instrument_id]["T"][i]),
+                             venue_fresh=True, cost_gate=False, now=s.clock, fixture=True)
+        p = claim["payload"]
+        rows.append({"pair": pair_name(x.instrument_id), "admissible": p["admissible"], "binding_reason": p["binding_reason"],
+                     "claim_id": claim["claim_id"],
+                     "unchecked": [c.split(":", 1)[1] for c in claim["inputs"] if c.startswith("unchecked:")]})
+    return {"rows": rows, "blackout": [{"start": w.start.isoformat(), "end": w.end.isoformat(), "pairs": list(w.pairs),
+                                         "reason": w.reason} for w in wins],
+            "note": "Listings and delisting notices are checked once a venue listing feed is connected; "
+                    "time-to-flatten and the cost gate bind inside sizing and the gate ladder."}
+
+
 def drift_board(s: PaperSession) -> dict[str, Any]:
     """PSI per input feature, last 30 days vs the 180 before (§10.2 L3). Formatted server-side."""
     from research.learner import drift
@@ -1037,8 +1058,7 @@ def data(s: PaperSession) -> dict[str, Any]:
                          "days": n // BPD, "consistent": n == (int(s.series[0].open_time[-1] - s.series[0].open_time[0]) // H4 + 1)},
             "lineage": {"root": "engine.data.fixtures.fixture_bars (seeded generator)", "zero_llm_ancestry": True},
             "drift": drift_board(s),
-            "admissibility": [{"pair": pair_name(x.instrument_id), "admissible": _fnum(s.result.signals[x.instrument_id]["T"][s.last_index()]) is not None}
-                              for x in s.series],
+            "admissibility": admissibility_board(s),
             "fixture": True}
 
 

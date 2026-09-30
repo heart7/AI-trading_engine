@@ -16,7 +16,7 @@ Fill model (§9.7), with the interpretations 4h bars force:
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -103,6 +103,9 @@ class ReplayConfig:
     es_mult: float | None = None  # research override for the ES-limit study; None reads policy
     components: tuple[str, ...] = ("B", "M", "Z")
     kelly_enabled: bool = True  # research plane only (see research/harness/steps.py)
+    # Admissibility service C1 hook (engine/admissibility/service.py): (instrument_id, bar_close) -> (ok, reason).
+    # None = universe, listings and blackout are not checked beyond the series given (the historical default).
+    admission: Callable[[str, datetime], tuple[bool, str | None]] | None = None
 
 
 @dataclass
@@ -293,6 +296,7 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
             B = None if math.isnan(g["B"][i]) else float(g["B"][i])
             T = None if math.isnan(g["T"][i]) else float(g["T"][i])
             abstain = "INSUFFICIENT_HISTORY" if T is None else None
+            admitted = T is not None and (cfg.admission is None or cfg.admission(k, now)[0])
             a = g["atr_daily"][i]
             px = float(s.c[i])
             cg = None
@@ -326,7 +330,7 @@ def replay(series: Sequence[Series], policy: Mapping, router: StrategyRouter, cf
                        and dec.entries_allowed)
             ladder_rows, binding = evaluate_entry(EntryContext(
                 engine_running=cfg.engine_running and not dec.reduce_only, sleeve_allowed=router.sleeve_allowed(sleeve, cfg.mode),
-                data_fresh=True, data_certified=s.certified or cfg.mode == "PAPER", signal_abstain=abstain, admissible=T is not None,
+                data_fresh=True, data_certified=s.certified or cfg.mode == "PAPER", signal_abstain=abstain, admissible=admitted,
                 B=B, T=T, T_entry=p.T_entry, side=1, evidence_on_file=cfg.evidence_on_file, cost_gate=cg,
                 cost_R=None, cost_R_max=policy["cost"]["cost_R_max"], risk_budget_ok=risk_ok))
             if B is not None and B > 0 and T is not None:
