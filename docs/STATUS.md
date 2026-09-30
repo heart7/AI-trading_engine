@@ -75,3 +75,28 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Verdict engine: NOT RUN without run_id, no PASS on CI ≤ 0, offline-only evidence, step 6 never gates SHADOW, promotion caps | RV | `research/harness/verdicts.py` |
 | Verdicts on real history | SN — blocked on data | P1 |
 | σ* choice when the ladder dominates | UQ | `docs/validation/fixture-harness-2026-09-28.md` |
+
+## P3 Execution (PAPER only; no order has been sent to any real venue)
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Connector registry: 6 shipped types + `ccxt-generic` (data/PAPER only, never trade-enabled) | RV | `engine/execution/registry.py` |
+| Venue lifecycle DRAFT → CONNECTED_READ → PAPER_ENABLED → TRADE_ENABLED, SUSPENDED, REMOVED; signed TRADE_ENABLE, ACCESS_RECORD, CAPABILITY_APPROVE, VENUE_REMOVE | RV | `engine/execution/venues.py` |
+| Key slots, least privilege, withdrawal refused, daily re-probe → SUSPENDED + S1, 90/180-day rotation | RV | `engine/execution/venues.py` |
+| Permission-probe parsers (Binance apiRestrictions, Bybit query-api, Kraken attested + negative probe); fail closed on unexpected shapes | RV (parsers), IU (live responses) | `engine/execution/adapters/probes.py` |
+| Access record §8.6 and geo rule INV-43 (residence = GB, venue confirmation required, egress country check) | RV | `engine/execution/venues.py` |
+| Capability snapshot diff → entries blocked until re-approved | RV | `engine/execution/venues.py` |
+| OMS: idempotent client ids, journal-before-send, retry only RETRYABLE, UNKNOWN → reconciliation (never resubmit), fencing epoch, restart reconciliation, stream-gap REST resync, dust write-off | RV on the simulated venue | `engine/execution/oms.py` |
+| Entry ladder: post-only at touch, re-price, IOC limit at the 15-min deadline, capped by sizing; never market | RV | `engine/execution/ladder.py` |
+| Venue-resident stops sized from filled qty; read-back verifier → PROTECTION_UNVERIFIED blocks entries; cancel/fill race safe (amend and cancel-replace paths) | RV on the simulated venue | `engine/execution/oms.py` |
+| Rate-limit token bucket with priority lanes; venue usage overrides local estimate | RV | `engine/execution/ratelimit.py` |
+| Clock skew > 500 ms → CLOCK_SKEW, entries blocked | RV | `engine/execution/oms.py` |
+| Dead-man switch for working entries only; not used where the timer would cancel stops | RV (sim) | `engine/execution/ladder.py` |
+| Simulated venue with scripted fault injection; 12-seed fuzz across faults and restarts | RV | `engine/execution/sim.py`, `tests/unit/test_execution.py` |
+| Conformance suite (12 checks) with content-hashed run record; runs in CI | RV on sim | `engine/execution/conformance.py`, `tools/uchfe.py conformance` |
+| Kraken spot adapter: signing (matches Kraken's published example), order params, error map, read-back | IU — never called a real endpoint | `engine/execution/adapters/kraken_spot.py` |
+| Binance spot / Bybit v5 read-only account adapters for tax history (no order methods) | IU | `engine/execution/adapters/readonly.py` |
+| Conformance on Kraken demo / Binance and Bybit testnets | SN — blocked | needs exchange network access and demo/testnet keys (owner) |
+| Kraken `CancelAllOrdersAfter` sparing stop-loss orders | UQ | if it cancels stops, the dead-man is not used on Kraken (spec §8.7) |
+| Perp connectors (binance-usdm, bybit-v5-linear, kraken-futures) order paths | SN | Strategy B is PAPER-only; registered, not implemented |
+| **P3 exit gate** (conformance green per connector on testnet/demo; race tests; INV-30, 31, 35–40 green) | partly met | race tests and invariants green; testnet conformance blocked |

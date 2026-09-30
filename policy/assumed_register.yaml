@@ -17,3 +17,7 @@ assumed:
   - {id: A-MDE-VOLDEF, value: "max DD improvement MDE 2pp", owner: principal, review_by: "2026-12-31", source: "H-A-STEP5-VOLDEFLATION"}
   - {id: A-DEADMAN-TIMERS, value: "Kraken CancelAllOrdersAfter; Binance countdownCancelAll; Bybit disconnect-cancel-all", owner: principal, review_by: "2026-12-31", source: "spec §8.7"}
   - {id: A-PERMISSION-PROBES, value: "Binance apiRestrictions; Bybit query-api; Kraken attested", owner: principal, review_by: "2026-12-31", source: "spec §8.5.3"}
+  - {id: A-ENTRY-LADDER, value: "re-price every 60 s; IOC limit cap 20 bp through the touch at the 15-min deadline", owner: principal, review_by: "2026-12-31", source: "spec §8.2 (only the deadline is specified)"}
+  - {id: A-PROTECTION-TOLERANCE, value: "stop read-back: qty within 1 lot, price within 1 tick", owner: principal, review_by: "2026-12-31", source: "spec §8.3"}
+  - {id: A-RATE-LANES, value: "token reserve after take: protect 0, cancel 1, entry 25%, data 50% of bucket", owner: principal, review_by: "2026-12-31", source: "spec §8.7"}
+  - {id: A-KRAKEN-ERRORS, value: "Kraken error-code classes in engine/execution/adapters/kraken_spot.py", owner: principal, review_by: "2026-12-31", source: "spec §8.7; verify against current Kraken API docs"}

@@ -7,6 +7,7 @@
   verify     verify an approval record against the enrolled keys
   coherence  print the coherence table for a policy and target mode
   activate   check coherence + approvals and report whether the policy can activate
+  conformance  run the adapter conformance suite (simulated venue) and write its run record
 
 Signing happens on the principal's own machine with the standard OpenSSH tool, which
 requires a touch on the key:
@@ -106,6 +107,22 @@ def cmd_activate(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_conformance(a: argparse.Namespace) -> int:
+    from engine.execution.adapters.kraken_spot import ERRORS
+    from engine.execution.conformance import run_suite
+    from engine.execution.registry import ConnectorRegistry
+
+    c = ConnectorRegistry.shipped().get(a.connector)
+    rec = run_suite(c.connector_type, c.version, ERRORS)
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"{rec['run_id']}.json").write_text(json.dumps(rec, indent=2) + "\n")
+    for ch in rec["checks"]:
+        print(f"  {'PASS' if ch['passed'] else 'FAIL'}  {ch['id']:<26} {ch['detail']}")
+    print(f"{rec['verdict']} {rec['run_id']} ({rec['environment']}; a testnet/demo run is still needed for PAPER_ENABLED)")
+    return 0 if rec["verdict"] == "PASS" else 1
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -145,6 +162,11 @@ def main() -> int:
     ac.add_argument("--mode", default="PAPER")
     ac.add_argument("approvals", nargs="*")
     ac.set_defaults(fn=cmd_activate)
+
+    cf = sub.add_parser("conformance")
+    cf.add_argument("--connector", default="kraken-spot")
+    cf.add_argument("--out", default="runs/conformance")
+    cf.set_defaults(fn=cmd_conformance)
 
     a = p.parse_args()
     return a.fn(a)
