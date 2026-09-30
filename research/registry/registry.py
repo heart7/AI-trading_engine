@@ -15,6 +15,10 @@ class BudgetExceeded(Exception):
     pass
 
 
+class LearnerHalted(Exception):
+    """Calibration or drift is FAIL: the learner's budget halts until the monitor clears (§10.3a)."""
+
+
 class GuardrailMissing(Exception):
     pass
 
@@ -44,7 +48,10 @@ def budget_used(items: list[dict[str, Any]], year: int) -> int:
     return sum(h["budget_debit"] for h in items if str(h["registered_at"]).startswith(str(year)))
 
 
-def register(items: list[dict[str, Any]], new: dict[str, Any], *, budget_per_year: int) -> list[dict[str, Any]]:
+def register(items: list[dict[str, Any]], new: dict[str, Any], *, budget_per_year: int,
+             halted: str | None = None) -> list[dict[str, Any]]:
+    if halted:
+        raise LearnerHalted(halted)
     validate("hypothesis", new)
     check_guardrails(new)
     year = int(str(new["registered_at"])[:4])

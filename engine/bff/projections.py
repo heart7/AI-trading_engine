@@ -747,6 +747,54 @@ def shadow_record(path: Path) -> dict[str, Any]:
     return {"status": f"{n} cycles, hash chain intact", "rungs": rows, "g2_days": metrics.g2_fields(recs)["shadow_days"], "how": how}
 
 
+LEARNING_DIR = ROOT / "runs" / "learning"
+
+
+def drift_board(s: PaperSession) -> dict[str, Any]:
+    """PSI per input feature, last 30 days vs the 180 before (§10.2 L3). Formatted server-side."""
+    from research.learner import drift
+    rep = drift.report(s.series)
+    rows = [{"pair": pair_name(r["instrument_id"]), "feature": r["feature"],
+             "psi": "—" if r["psi"] is None else fmt_number(r["psi"], digits=3), "status": r["status"], "detail": r["detail"]}
+            for r in rep["rows"]]
+    return {"status": rep["status"], "class": rep["class"], "rows": rows,
+            "reason": f"PSI, last {rep['window']['current_days']} days vs the {rep['window']['reference_days']} before; "
+                      f"WARN ≥ {rep['thresholds']['warn']}, FAIL ≥ {rep['thresholds']['fail']} renders ABSTAIN",
+            "halts_learner": drift.learner_halt(rep) is not None}
+
+
+def learning(s: PaperSession) -> dict[str, Any]:
+    """Learning outcomes and learner proposals vs live parameters (§10.3b P5, §16 Bots & Models). No Apply control."""
+    import json
+    from dataclasses import replace
+
+    from research.learner import cost_retune, drift, episodes
+    closed, _ = s.trades_visible()
+    eps = episodes.from_replay(replace(s.result, trades=closed), s.series, s.policy, s.policy_hash, costs=s.costs)
+    rate = episodes.process_error_rate(eps)
+    pfile = LEARNING_DIR / "cost-proposal.json"
+    if pfile.exists():
+        prop, src = json.loads(pfile.read_text()), "runs/learning/cost-proposal.json"
+    else:
+        prop, src = cost_retune.fit(cost_retune.observations(eps), costs=s.costs), "fixture episodes"
+    live = prop["current"]["slippage_q75"]
+    proposed = prop.get("proposed", {}).get("slippage_q75")
+    cal = drift.calibration_status(None, today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
+                                   ece_fail=s.policy["regime"]["ece_fail"])
+    halt = drift.learner_halt(drift.report(s.series), [dict(cal, model="CCMRM")])
+    return {"episodes": {"count": len(eps), "class": "FIXTURE",
+                         "excluded": sum(e["excluded_from_training"] for e in eps),
+                         "training_set": sum(e["class"] == "OBSERVED" and not e["excluded_from_training"] for e in eps),
+                         "process_error_rate": "—" if rate is None else fmt_number(rate * 100, digits=1) + "%",
+                         "cost_divergence": "no real fills yet"},
+            "proposals": [{"parameter": cost_retune.TARGET, "live": fmt_number(live, digits=5),
+                           "proposed": "—" if proposed is None else fmt_number(proposed, digits=5),
+                           "verdict": prop["verdict"], "evidence": f"{prop['evidence_class']} · {src}",
+                           "detail": prop.get("detail", ""), "applies": False}],
+            "halted": halt, "apply_control": False,
+            "rule": "Proposals never apply themselves: a change needs the harness, a stress PASS and a signed policy."}
+
+
 def strategy(s: PaperSession) -> dict[str, Any]:
     i = s.last_index()
     tier = active_tier(s)
@@ -988,7 +1036,7 @@ def data(s: PaperSession) -> dict[str, Any]:
             "coverage": {"bars": n, "from": datetime.fromtimestamp(int(s.series[0].open_time[0]), tz=timezone.utc).isoformat(),
                          "days": n // BPD, "consistent": n == (int(s.series[0].open_time[-1] - s.series[0].open_time[0]) // H4 + 1)},
             "lineage": {"root": "engine.data.fixtures.fixture_bars (seeded generator)", "zero_llm_ancestry": True},
-            "drift": {"status": "not run", "reason": "needs certified history"},
+            "drift": drift_board(s),
             "admissibility": [{"pair": pair_name(x.instrument_id), "admissible": _fnum(s.result.signals[x.instrument_id]["T"][s.last_index()]) is not None}
                               for x in s.series],
             "fixture": True}
@@ -1016,11 +1064,19 @@ def bots(s: PaperSession, light: bool = False) -> dict[str, Any]:
                 {"model": "Trend ensemble T", "version": "0.1.0", "authority": "T1", "state_rule": "policy.signal"}]
     return {"authority_matrix": matrix, "model_registry": registry, "modules": modules,
             "emissions": emissions_projection(s),
-            "calibration": [{"model": "CCMRM", "ece": None, "authoritative": False, "text": "not yet measured"}],
+            "calibration": [_calibration(s)], "learning": learning(s),
             "verifier": {"heartbeat": "ok" if s.stream_alive else "lost", "last_kill_drill": {"passed": s.drill.get("passed"),
                                                                                                 "run_id": s.drill.get("run_id")}},
             "hypothesis_budget": _hypothesis_budget(s), "instruction_log": list(s.reporter_log[-50:]),
             "apply_control": False, "fixture": True, "inactive": [f"Allocator inactive at {tier}"]}
+
+
+def _calibration(s: PaperSession) -> dict[str, Any]:
+    from research.learner import drift
+    c = drift.calibration_status(None, today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
+                                 ece_fail=s.policy["regime"]["ece_fail"])
+    return {"model": "CCMRM", "ece": c.get("ece"), "authoritative": c["authoritative"], "status": c["status"],
+            "expires": c["expires"], "text": c["text"] + f" (a measurement expires after {drift.CALIBRATION_TTL_DAYS} days)"}
 
 
 def _hypothesis_budget(s: PaperSession) -> dict[str, Any]:

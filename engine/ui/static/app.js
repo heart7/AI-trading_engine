@@ -352,7 +352,10 @@ S.data = function () {
     })))) + '<div class="grid2 even sec">' + U.panel("Dataset builds", U.table(["Dataset", "Hash", "Quality report", "Certifiable"], d.builds.map(function (b) {
       return [esc(b.dataset), '<span class="mono">' + esc(b.hash.slice(0, 16)) + '…</span>', esc(b.quality_report || "none"), esc(b.certifiable) + '<div class="note">' + esc(b.reason) + '</div>'];
     }))) + U.panel("Coverage and lineage", U.kv([["Bars", esc(d.coverage.bars) + " (" + esc(d.coverage.days) + " days from " + esc(d.coverage.from.slice(0, 10)) + ")"], ["Consistent with 4h grid", esc(d.coverage.consistent)],
-      ["Lineage root", esc(d.lineage.root)], ["Zero LLM ancestry", d.lineage.zero_llm_ancestry ? "✓" : "✗"], ["Drift monitors", esc(d.drift.status + ": " + d.drift.reason)]])) + '</div>' +
+      ["Lineage root", esc(d.lineage.root)], ["Zero LLM ancestry", d.lineage.zero_llm_ancestry ? "✓" : "✗"], ["Drift monitors", esc(d.drift.status + " (" + d.drift["class"] + ")")]])) + '</div>' +
+      U.panel("Drift monitors (PSI) · " + esc(d.drift.status), U.table(["Pair", "Feature", "PSI", "Status", "Detail"], d.drift.rows.map(function (r) {
+        return [esc(r.pair), esc(r.feature), esc(r.psi), '<span class="' + ({OK: "pass", FAIL: "fail"}[r.status] || "") + '">' + esc(r.status) + '</span>', esc(r.detail)];
+      }), "Drift monitors") + '<p class="note">' + esc(d.drift.reason) + '</p>') + '<div class="gap"></div>' +
       U.panel("Admissibility", U.table(["Pair", "Admissible"], d.admissibility.map(function (a) { return [esc(a.pair), a.admissible ? "✓" : "✗"]; })));
   });
 };
@@ -365,9 +368,16 @@ S.bots = function () {
     }), "Authority matrix"), {fixture: false})) + U.sec("Emissions, 30 days", "Same series as Activity P7. ABSTAIN is never merged.", '<div class="panel pad fixture"><div id="bemis"></div></div>') +
       '<div class="grid2 even sec">' + U.panel("Model registry", U.table(["Model", "Version", "Authority", "Rule"], d.model_registry.map(function (m) { return [esc(m.model), esc(m.version), esc(m.authority), esc(m.state_rule)]; }))) +
       U.panel("Modules vs active policy hash", U.table(["Module", "Status"], d.modules.map(function (m) { return [esc(m.module), m.conflicted ? '<span class="chip crit">CONFLICTED</span>' : '<span class="pass">✓ matches</span>']; }))) + '</div>' +
-      '<div class="grid3">' + U.panel("Calibration", d.calibration.map(function (c) { return esc(c.model + ": " + c.text + " (non-authoritative)"); }).join("<br>")) +
+      '<div class="grid3">' + U.panel("Calibration", d.calibration.map(function (c) { return esc(c.model + ": " + c.text + (c.authoritative ? "" : " · non-authoritative")); }).join("<br>")) +
       U.panel("Verifier and watchdog", U.kv([["Heartbeat", esc(d.verifier.heartbeat)], ["Last kill-verifier drill", d.verifier.last_kill_drill.passed ? '<span class="pass">✓ entries blocked</span>' : '<span class="fail">✗</span>']])) +
       U.panel("Hypothesis budget", esc(d.hypothesis_budget.used) + " of " + esc(d.hypothesis_budget.budget) + " used in " + esc(d.hypothesis_budget.year)) + '</div>' +
+      U.sec("Learning outcomes", d.learning.rule, U.panel("Trade episodes", U.kv([["Closed trades recorded", esc(d.learning.episodes.count + " (" + d.learning.episodes["class"] + ")")],
+        ["Excluded from training", esc(d.learning.episodes.excluded)], ["Training set (OBSERVED)", esc(d.learning.episodes.training_set)],
+        ["Process-error rate", esc(d.learning.episodes.process_error_rate)], ["Cost divergence", esc(d.learning.episodes.cost_divergence)],
+        ["Learner budget", d.learning.halted ? '<span class="fail">halted: ' + esc(d.learning.halted) + '</span>' : "open"]])) + '<div class="gap"></div>' +
+        U.panel("Learner proposals vs live parameters", U.table(["Parameter", "Live", "Proposed", "Verdict", "Evidence", "Applies"], d.learning.proposals.map(function (x) {
+          return [esc(x.parameter), esc(x.live), esc(x.proposed), esc(x.verdict) + '<div class="note">' + esc(x.detail) + '</div>', esc(x.evidence), x.applies ? "yes" : "no"];
+        }), "Learner proposals"))) +
       U.panel("Instruction log", d.instruction_log.length ? U.table(["At", "Question", "Refused"], d.instruction_log.map(function (x) { return [esc(x.at), esc(x.question), x.refused ? "refused" : "answered"]; })) : '<p class="note">No reporter instructions yet.</p>', {fixture: false}) +
       (function () { U.after = function () { if (U.drawEmissions) U.drawEmissions(document.getElementById("bemis"), em); }; return ""; })();
   });

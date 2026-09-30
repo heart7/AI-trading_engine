@@ -242,7 +242,8 @@
               "CI_TOO_WIDE",
               "THETA0",
               "STRESS",
-              "N1"
+              "N1",
+              "DRIFT"
             ]
           }
         }

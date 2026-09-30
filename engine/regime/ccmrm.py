@@ -127,6 +127,7 @@ class RegimeLayer:
     policy: Mapping[str, Any]
     policy_hash: str
     ece: float | None = None  # rolling calibration error from `calibration()`; None = not yet measured
+    drift: str | None = None  # input drift status from research/learner/drift.py; FAIL renders ABSTAIN (§10.2 L3)
     history: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -156,6 +157,8 @@ class RegimeLayer:
             reasons.append("STRESS")
         if self.ece is not None and self.ece >= rg["ece_fail"]:
             reasons.append("N1")
+        if self.drift == "FAIL":
+            reasons.append("DRIFT")
         now = now or datetime.now(timezone.utc)
         if (now - bar_close).total_seconds() > ttl_s:
             reasons.append("STALE")

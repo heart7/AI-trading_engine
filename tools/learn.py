@@ -4,6 +4,7 @@
   drill    FIXTURE drill for CI: closed paper trades -> episodes -> store -> attribution -> cost retune
   retune   fit the cost model to OBSERVED shadow quotes and real fills; writes a proposal, never applies it
   status   episodes on file by class, process-error rate, training-set size
+  drift    PSI drift monitors on a certified store (last 30 days vs the 180 before); FAIL halts the learner
 
 On your own machine, once the shadow record has entries priced from the order book:
 
@@ -110,6 +111,26 @@ def cmd_status(a: argparse.Namespace) -> int:
     return 0
 
 
+def psi_txt(r: dict) -> str:
+    return "—" if r["psi"] is None else f"{r['psi']:.3f}"
+
+
+def cmd_drift(a: argparse.Namespace) -> int:
+    from engine.shadow import feed
+    from research.learner import drift
+    loaded = [feed.load_history(feed.store_path(Path(a.history), b)) for b in a.pair or ["BTC", "XRP", "ETH", "SOL"]]
+    rep = drift.report([s for s in loaded if s is not None])
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "drift.json").write_text(json.dumps(rep, indent=2, default=str) + "\n")
+    print(f"drift: {rep['status']} ({rep['class']})")
+    for r in rep["rows"]:
+        print(f"  {r['instrument_id']:>12} {r['feature']:<14} {psi_txt(r)} {r['status']} {r['detail']}")
+    halt = drift.learner_halt(rep)
+    print(f"learner budget: {'halted: ' + halt if halt else 'open'}")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--policy")
@@ -129,6 +150,11 @@ def main() -> int:
     st = sub.add_parser("status")
     st.add_argument("--episodes", default="runs/learning/episodes.jsonl")
     st.set_defaults(fn=cmd_status)
+    dr = sub.add_parser("drift")
+    dr.add_argument("--history", required=True)
+    dr.add_argument("--pair", action="append")
+    dr.add_argument("--out", default="runs/learning")
+    dr.set_defaults(fn=cmd_drift)
     a = p.parse_args()
     return a.fn(a)
 
