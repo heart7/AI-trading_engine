@@ -207,3 +207,14 @@ Run the drill: `python tools/shadow.py drill`. On a machine with exchange access
 | Operator tool: `drill` (CI), `retune`, `status` | RV (drill) | `tools/learn.py` |
 
 Run the drill: `python tools/learn.py drill`. With a shadow record on file: `python tools/learn.py retune --history data/live`.
+
+## P9 Drift monitors and learning on screen
+
+| Deliverable | Status | Where |
+|---|---|---|
+| PSI drift monitors per input feature (30 days vs the 180 before); FAIL renders ABSTAIN in the regime layer (`DRIFT`) | RV on constructed and FIXTURE series | `research/learner/drift.py`, `engine/regime/ccmrm.py`, decision 0008 |
+| Calibration expiry (30 days); missing or expired is non-authoritative | RV | `drift.calibration_status` |
+| Learner budget halts on OBSERVED drift or calibration FAIL: the registry refuses new hypotheses | RV | `registry.register(..., halted=)` |
+| Data screen: drift board replaces "not run" | RV | `drift_board` in `engine/bff/projections.py` |
+| Bots & Models: learning outcomes (episodes, process-error rate, training set) and learner proposals vs live parameters, no Apply control | RV | `learning` in `engine/bff/projections.py` |
+| Operator tool: `tools/learn.py drift --history data/live` | RV | `tools/learn.py` |
