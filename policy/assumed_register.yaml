@@ -11,7 +11,7 @@ assumed:
   - {id: A-TAX-UK, value: "UK CGT matching same-day, 30-day, s104; rates and annual exempt amount not yet set", owner: principal, review_by: "2026-12-31", source: "spec §12.4; accountant sign-off before LIVE"}
   - {id: A-RETENTION, value: "records kept >= 6 years", owner: principal, review_by: "2026-12-31", source: "spec §12.7"}
   - {id: A-ERA-BOUNDARIES, value: "era boundaries for history homogeneity", owner: principal, review_by: "2026-12-31", source: "spec §7.6a"}
-  - {id: A-BLACKOUT, value: "blackout calendar (maintenance, forks, SOL/XRP unlocks)", owner: principal, review_by: "2026-12-31", source: "spec §5.1"}
+  - {id: A-BLACKOUT, value: "blackout calendar (maintenance, forks, SOL/XRP unlocks) in policy/blackout.yaml, shipped empty", owner: principal, review_by: "2026-12-31", source: "spec §5.1"}
   - {id: A-MARGIN-PROJECTION, value: "B stop distance 7%, maintenance margin 0.5% for coherence C07", owner: principal, review_by: "2026-12-31", source: "spec Appendix B.2"}
   - {id: A-MDE-ABLATION, value: "paired Sharpe diff MDE 0.2", owner: principal, review_by: "2026-12-31", source: "H-A-STEP3-ABLATION"}
   - {id: A-MDE-VOLDEF, value: "max DD improvement MDE 2pp", owner: principal, review_by: "2026-12-31", source: "H-A-STEP5-VOLDEFLATION"}

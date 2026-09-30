@@ -1,0 +1,11 @@
+# Blackout calendar (spec §5.1, A-BLACKOUT). Governance-owned: exchange maintenance, known forks, token unlocks for
+# SOL/XRP. A pair inside a window is not admissible for new entries (exits are never blocked). Change it by a
+# reviewed commit like any policy file.
+#
+# windows:
+#   - start: "2026-11-02T08:00:00+00:00"   # inclusive, UTC
+#     end:   "2026-11-02T12:00:00+00:00"   # exclusive
+#     pairs: [SOL]                          # bases, or ["*"] for every pair
+#     reason: "Kraken scheduled maintenance"
+#     source: "https://status.kraken.com/..."
+windows: []

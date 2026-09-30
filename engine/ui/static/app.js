@@ -356,7 +356,10 @@ S.data = function () {
       U.panel("Drift monitors (PSI) · " + esc(d.drift.status), U.table(["Pair", "Feature", "PSI", "Status", "Detail"], d.drift.rows.map(function (r) {
         return [esc(r.pair), esc(r.feature), esc(r.psi), '<span class="' + ({OK: "pass", FAIL: "fail"}[r.status] || "") + '">' + esc(r.status) + '</span>', esc(r.detail)];
       }), "Drift monitors") + '<p class="note">' + esc(d.drift.reason) + '</p>') + '<div class="gap"></div>' +
-      U.panel("Admissibility", U.table(["Pair", "Admissible"], d.admissibility.map(function (a) { return [esc(a.pair), a.admissible ? "✓" : "✗"]; })));
+      U.panel("Admissibility (service C1)", U.table(["Pair", "Admissible", "Binding reason", "Not yet checked"], d.admissibility.rows.map(function (a) {
+        return [esc(a.pair), a.admissible ? "✓" : "✗", esc(a.binding_reason || "—"), esc(a.unchecked.join(", ") || "—")];
+      }), "Admissibility") + '<p class="note">' + esc(d.admissibility.note) + '</p>' +
+        '<p class="note">Blackout calendar: ' + (d.admissibility.blackout.length ? d.admissibility.blackout.map(function (w) { return esc(w.pairs.join(",") + " " + w.start + " → " + w.end + " (" + w.reason + ")"); }).join("; ") : "no windows declared (policy/blackout.yaml)") + '</p>');
   });
 };
 
