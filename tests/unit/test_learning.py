@@ -48,8 +48,9 @@ def quotes(values, cls="OBSERVED", pred=0.001):
 # ---------- episode factory ----------
 def test_replay_episodes_one_per_closed_trade_and_fixture(paper):
     _, res, eps = paper
-    assert len(eps) == len(res.trades) > 0
-    for e, t in zip(eps, res.trades):
+    done = episodes.matured(res)
+    assert len(eps) == len(done) > 0 and all(t.exit_reason != "END_OF_REPLAY" for t in done)
+    for e, t in zip(eps, done):
         assert e["class"] == "FIXTURE" and e["source"] == "PAPER_REPLAY"
         assert e["pnl_usd"] == pytest.approx(t.pnl, abs=1e-9) and e["R_realised"] == pytest.approx(t.R, abs=1e-9)
         assert e["hold_bars"] == t.bars_held and e["exit_reason"] == t.exit_reason
@@ -72,7 +73,8 @@ def test_attribution_on_episodes_is_exact_and_matches_replay(paper):
     _, res, eps = paper
     att = attribute([episodes.to_attribution(e) for e in eps])
     assert att.exact
-    assert float(att.net) == pytest.approx(sum(t.pnl for t in res.trades), abs=1e-6)
+    assert float(att.net) == pytest.approx(sum(t.pnl for t in episodes.matured(res)), abs=1e-6)
+    assert episodes.process_error_rate(eps) == 0.0  # paper fills equal the model: no COST_MODEL_OFF
 
 
 def test_excluded_classes_kept_but_never_trained():

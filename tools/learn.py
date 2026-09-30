@@ -55,9 +55,10 @@ def cmd_drill(a: argparse.Namespace) -> int:
     added, again = store.extend(eps), store.extend(eps)
     chain = store.verify()
     att = attribute([episodes.to_attribution(e) for e in store.records()])
-    ledger_net = sum(t.pnl for t in res.trades)
+    done = episodes.matured(res)
+    ledger_net = sum(t.pnl for t in done)
     prop = cost_retune.fit(cost_retune.observations(store.records()))
-    passed = (added == len(res.trades) > 0 and again == 0 and chain == added and att.exact
+    passed = (added == len(done) > 0 and again == 0 and chain == added and att.exact
               and abs(float(att.net) - ledger_net) < 1e-6 and not store.training_set()
               and prop["verdict"] == "NO_EVIDENCE" and prop["evidence_class"] == "FIXTURE" and not prop["applies"]
               and content_hash(doc) == before)

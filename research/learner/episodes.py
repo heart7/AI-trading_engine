@@ -31,6 +31,7 @@ from engine.replay.paper import CostModel, ReplayResult, Series
 
 EXCLUDED_CLASSES = ("ADL_EVENT", "FORCED_FLATTEN", "TIER_DOWNGRADE_EXIT", "PROTECTION_FAILURE")
 STOP_REASONS = ("INITIAL_STOP", "TRAILING_STOP")
+NOT_MATURED = ("END_OF_REPLAY",)  # a position still open when the replay ends is marked, not closed
 # ASSUMED (A-EPISODE-COST-OFF): a side is a cost-model process error when it paid more than twice the predicted
 # cost, with a 1 bp floor on the prediction so a zero-cost maker side is not flagged on rounding.
 COST_OFF_MULT = 2.0
@@ -99,33 +100,38 @@ def _side(s: Side) -> dict[str, Any]:
             "liquidity": s.liquidity}
 
 
+def matured(res: ReplayResult) -> list:
+    return [t for t in res.trades if t.exit_reason not in NOT_MATURED]
+
+
 def from_replay(res: ReplayResult, series: Sequence[Series], policy: Mapping[str, Any], policy_hash: str, *,
                 costs: CostModel | None = None, sleeve: str = "A_long") -> list[dict[str, Any]]:
-    """FIXTURE episodes from the PAPER replay's closed trades. Paper fills equal the model, so realised == predicted."""
+    """FIXTURE episodes from the PAPER replay's closed trades. Paper fills equal the model, so realised == predicted.
+    Positions still open at the end of the replay are not episodes."""
     costs = costs or CostModel()
     by_id = {s.instrument_id: s for s in series}
     expected = int(policy["stops"]["time_stop"]["default_dwell_bars"])
     out = []
-    for t in res.trades:
+    for t in matured(res):
         s = by_id[t.instrument_id]
         ie = int(np.searchsorted(s.open_time, t.entry_time))
         ix = int(np.searchsorted(s.open_time, t.exit_time))
         if t.entry_liquidity == "maker":
-            entry = Side(float(s.c[ie - 1]) if ie else float(s.o[ie]), float(s.o[ie]), t.entry_px, t.entry_px, "maker")
+            entry = Side(float(s.c[ie - 1]) if ie else float(s.o[ie]), float(s.o[ie]), float(t.entry_px), float(t.entry_px), "maker")
         else:
             arr = float(s.o[ie])
             entry = Side(float(s.c[ie - 1]) if ie else arr, arr, arr * (1 + costs.half_spread + costs.slippage_q75),
-                         t.entry_px, "taker")
+                         float(t.entry_px), "taker")
         if t.exit_reason in STOP_REASONS:
-            arr = t.exit_px / (1 - costs.slippage_q75)
-            exit = Side(arr, arr, t.exit_px, t.exit_px, "taker")
+            arr = float(t.exit_px) / (1 - costs.slippage_q75)
+            exit = Side(arr, arr, float(t.exit_px), float(t.exit_px), "taker")
         else:
             arr = float(s.o[ix])
-            exit = Side(float(s.c[ix - 1]), arr, arr * (1 - costs.half_spread - costs.slippage_q75), t.exit_px, "taker")
+            exit = Side(float(s.c[ix - 1]), arr, arr * (1 - costs.half_spread - costs.slippage_q75), float(t.exit_px), "taker")
         risk = t.pnl / t.R if t.R else 0.0
-        out.append(build(instrument_id=t.instrument_id, sleeve=sleeve, qty=t.qty, entry=entry, exit=exit,
-                         entry_bar_close=_iso(t.entry_time), exit_bar_close=_iso(t.exit_time), fees_usd=t.fees,
-                         risk_usd=risk, hold_bars=t.bars_held, exit_reason=t.exit_reason, cls="FIXTURE",
+        out.append(build(instrument_id=t.instrument_id, sleeve=sleeve, qty=float(t.qty), entry=entry, exit=exit,
+                         entry_bar_close=_iso(t.entry_time), exit_bar_close=_iso(t.exit_time), fees_usd=float(t.fees),
+                         risk_usd=float(risk), hold_bars=t.bars_held, exit_reason=t.exit_reason, cls="FIXTURE",
                          source="PAPER_REPLAY", policy_hash=policy_hash, expected_hold=expected))
     return out
 
