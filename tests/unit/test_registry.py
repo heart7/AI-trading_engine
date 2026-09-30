@@ -8,7 +8,7 @@ from research.registry import registry as reg
 
 def test_seeded_with_steps_2_to_5_pre_registered():
     items = reg.load()
-    assert sorted(h["harness_step"] for h in items) == [2, 3, 4, 5]
+    assert sorted(h["harness_step"] for h in items if h["id"].startswith("H-A-STEP")) == [2, 3, 4, 5]
     assert all(h["status"] == "PRE_REGISTERED" and h["run_ids"] == [] and h["mde"] for h in items)
 
 

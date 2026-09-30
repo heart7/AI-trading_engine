@@ -194,3 +194,16 @@ Run the drill: `python tools/shadow.py drill`. On a machine with exchange access
 | EOD and monthly reports from claims only, references appendix, REPORTED narrative citing figure ids, stress battery and ASSUMED items due | RV on FIXTURE | `engine/reports/reports.py`, `tools/report.py` |
 | **P7 exit gate** (go-live policy hash signed; accountant sign-off on tax config) | not met | owner and accountant actions; P6 record first |
 
+
+## P8 Learning loop (episodes and cost retune)
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Episode factory: each closed position as a `trade_episode`, both sides priced at decision, model and fill; exclusions per §10.3; COST_MODEL_OFF process errors | RV on FIXTURE | `research/learner/episodes.py`, `schemas/trade_episode.json` |
+| Append-only, hash-chained, idempotent episode store; training set is OBSERVED and non-excluded only | RV | `EpisodeStore` |
+| Attribution (L2) on the same episodes, exact to the replay net | RV | `episodes.to_attribution` |
+| Cost-model retune from realised slippage: q75 with a seeded bootstrap interval; RAISE / LOWER / NO_CHANGE; quotes never loosen; proposal only (`applies: false`) with a replay of its effect | RV on constructed cases; no OBSERVED input yet | `research/learner/cost_retune.py`, decision 0007 |
+| Registered hypothesis for the retune | PRE_REGISTERED | `H-A-COST-QUANTILE` in `research/registry/hypotheses.yaml` |
+| Operator tool: `drill` (CI), `retune`, `status` | RV (drill) | `tools/learn.py` |
+
+Run the drill: `python tools/learn.py drill`. With a shadow record on file: `python tools/learn.py retune --history data/live`.

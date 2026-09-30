@@ -60,3 +60,22 @@ hypotheses:
     run_ids: []
     status: PRE_REGISTERED
     registered_at: "2026-09-28"
+  - id: H-A-COST-QUANTILE
+    owner: principal
+    sleeve: A_long
+    harness_step: 4
+    class: HYPOTHESIS
+    description: >-
+      The taker charge half_spread + slippage_q75 (A-FEES-KRAKEN) matches the policy quantile of the adverse cost
+      actually paid on Kraken spot, measured on OBSERVED shadow quotes and real fills (research/learner/cost_retune.py).
+    metric: q75 of realised adverse cost per taker side vs the modelled charge, 90% seeded bootstrap interval
+    mde: {side_cost: 0.0002, basis: "ASSUMED 2 bp per side (A-COST-RETUNE), owner principal, review 2026-12-31"}
+    pass_rule: the charge lies inside the interval (NO_CHANGE), with at least 50 fills or 100 quotes
+    falsification_rule: >-
+      interval above the charge -> propose RAISE; interval below it with at least 50 real fills -> propose LOWER and
+      re-run step 4 on the new value. Quotes alone never loosen the model. Either way applying needs a signed policy.
+    budget_debit: 1
+    run_ids: []
+    status: PRE_REGISTERED
+    registered_at: "2026-09-30"
+    changes: [CostModel.slippage_q75]
