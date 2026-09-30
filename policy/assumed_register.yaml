@@ -22,3 +22,6 @@ assumed:
   - {id: A-RATE-LANES, value: "token reserve after take: protect 0, cancel 1, entry 25%, data 50% of bucket", owner: principal, review_by: "2026-12-31", source: "spec §8.7"}
   - {id: A-KRAKEN-ERRORS, value: "Kraken error-code classes in engine/execution/adapters/kraken_spot.py", owner: principal, review_by: "2026-12-31", source: "spec §8.7; verify against current Kraken API docs"}
   - {id: A-STRESS-BOOK, value: "stress book: stop distance 8%; stressed volume $/min BTC 2e6, ETH 1e6, XRP/SOL 3e5; replay scenarios run as synthetic proxies until history is certified", owner: principal, review_by: "2026-12-31", source: "spec §7.8"}
+  - {id: A-UI-CYCLE-CLOCK, value: "paper activity events use a deterministic cycle clock inside the 13.4 windows", owner: principal, review_by: "2026-12-31", source: "decision 0005"}
+  - {id: A-T-BAND, value: "T band = T recomputed with the EWMA vol estimate scaled by 0.8 and 1.25", owner: principal, review_by: "2026-12-31", source: "decision 0005, spec 16.8.1 P2"}
+  - {id: A-UI-FIXTURE-SESSION, value: "UI paper session replays the fixture universe with mu_q_daily 0.001", owner: principal, review_by: "2026-12-31", source: "decision 0005"}
