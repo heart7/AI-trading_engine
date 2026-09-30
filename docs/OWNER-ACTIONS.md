@@ -50,6 +50,12 @@ Then schedule `run` a few minutes after each 4h close (cron `5 0,4,8,12,16,20 * 
 pass on real history the cycles are recorded at the PAPER rung and do not count toward the 90 shadow days. Moving
 to SHADOW needs your signed PROMOTE approval.
 
+Once a few weeks of cycles have entries priced from the order book, you can check the cost model against them:
+```
+python3 tools/learn.py retune --journal runs/shadow/journal.jsonl --history data/live
+```
+It writes a proposal to `runs/learning/cost-proposal.json` and changes nothing (decision 0007).
+
 ## 6. Decision 0004 (venue cap), if you agree with the default
 `policy/proposals/policy-10.4.1-venue-cap.yaml` lowers the per-venue cap from 40% to 20% so the "venue fails" stress
 scenario stays inside the 20% drawdown budget. It passes the stress battery. It takes effect only if you sign it:

@@ -33,6 +33,8 @@ jobs:
         run: python tools/uchfe.py drill --out runs/ci/drills
       - name: P6 shadow drill (FIXTURE cycles; journal chain, recon, no H1/D1; FIXTURE never counts toward G2)
         run: python tools/shadow.py drill --out runs/ci/shadow
+      - name: P8 learning drill (FIXTURE episodes; store chain, attribution exact, FIXTURE never fitted)
+        run: python tools/learn.py drill --out runs/ci/learning
       - name: Stress battery on the active policy (reported; S4 fails, see decision 0004)
         run: python tools/uchfe.py stress --report-only --out runs/ci/stress
       - name: Tests and negative-test suite (with run record)

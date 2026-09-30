@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/trade_episode.json",
+  "title": "Matured trade episode (§10.2 L1, §10.3a, §11 trade_episode): one closed position, both sides priced three ways",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "sleeve", "instrument_id", "class", "source", "entry_intent", "exit_intent", "qty", "entry", "exit",
+               "R_realised", "pnl_usd", "costs", "hold_bars", "expected_hold", "exit_reason", "classification",
+               "process_error_class", "process_flags", "excluded_from_training", "policy_hash"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sleeve": {"enum": ["A_long", "B_short", "B_long"]},
+    "instrument_id": {"type": "string"},
+    "class": {"enum": ["FIXTURE", "OBSERVED"]},
+    "source": {"enum": ["PAPER_REPLAY", "FILLS"]},
+    "entry_intent": {"$ref": "#/$defs/intent_ref"},
+    "exit_intent": {"$ref": "#/$defs/intent_ref"},
+    "qty": {"type": "number", "exclusiveMinimum": 0},
+    "entry": {"$ref": "#/$defs/side"},
+    "exit": {"$ref": "#/$defs/side"},
+    "R_realised": {"type": "number"},
+    "pnl_usd": {"type": "number"},
+    "costs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fees_usd", "predicted_usd", "realised_usd"],
+      "properties": {"fees_usd": {"type": "number"}, "predicted_usd": {"type": "number"}, "realised_usd": {"type": "number"}}
+    },
+    "hold_bars": {"type": "integer", "minimum": 0},
+    "expected_hold": {"type": "integer", "minimum": 1},
+    "exit_reason": {"type": "string"},
+    "classification": {"enum": ["OUTCOME_VARIANCE", "PROCESS_ERROR", "ADL_EVENT", "FORCED_FLATTEN", "TIER_DOWNGRADE_EXIT",
+                                "PROTECTION_FAILURE"]},
+    "process_error_class": {"enum": [null, "regime", "execution", "data"]},
+    "process_flags": {"type": "array", "items": {"type": "string"}},
+    "excluded_from_training": {"type": "boolean"},
+    "policy_hash": {"type": "string"}
+  },
+  "$defs": {
+    "intent_ref": {
+      "type": "object", "additionalProperties": false, "required": ["instrument_id", "bar_close"],
+      "properties": {"instrument_id": {"type": "string"}, "bar_close": {"type": "string", "format": "date-time"}}
+    },
+    "side": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision_px", "arrival_px", "model_px", "fill_px", "liquidity", "cost_predicted", "cost_realised"],
+      "properties": {
+        "decision_px": {"type": "number", "exclusiveMinimum": 0, "description": "bar close the decision was made on"},
+        "arrival_px": {"type": "number", "exclusiveMinimum": 0, "description": "price when the order reached the venue (next open, or the stop level)"},
+        "model_px": {"type": "number", "exclusiveMinimum": 0, "description": "fill the cost model predicted from arrival"},
+        "fill_px": {"type": "number", "exclusiveMinimum": 0, "description": "realised average fill"},
+        "liquidity": {"enum": ["maker", "taker"]},
+        "cost_predicted": {"type": "number", "description": "adverse fraction of arrival the model predicted"},
+        "cost_realised": {"type": "number", "description": "adverse fraction of arrival actually paid (spread + slippage)"}
+      }
+    }
+  }
+}
