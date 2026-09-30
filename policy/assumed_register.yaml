@@ -21,3 +21,4 @@ assumed:
   - {id: A-PROTECTION-TOLERANCE, value: "stop read-back: qty within 1 lot, price within 1 tick", owner: principal, review_by: "2026-12-31", source: "spec §8.3"}
   - {id: A-RATE-LANES, value: "token reserve after take: protect 0, cancel 1, entry 25%, data 50% of bucket", owner: principal, review_by: "2026-12-31", source: "spec §8.7"}
   - {id: A-KRAKEN-ERRORS, value: "Kraken error-code classes in engine/execution/adapters/kraken_spot.py", owner: principal, review_by: "2026-12-31", source: "spec §8.7; verify against current Kraken API docs"}
+  - {id: A-STRESS-BOOK, value: "stress book: stop distance 8%; stressed volume $/min BTC 2e6, ETH 1e6, XRP/SOL 3e5; replay scenarios run as synthetic proxies until history is certified", owner: principal, review_by: "2026-12-31", source: "spec §7.8"}

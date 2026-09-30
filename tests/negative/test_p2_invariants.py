@@ -190,6 +190,7 @@ def test_upgrade_with_failing_gate_or_unsigned_refused():
     assert router.request_up("T2", el2, va, NOW) == "T2"
 
 
+@pytest.mark.invariant("INV-41")
 def test_deposit_restarts_tier_dwell():
     ev, today = evidence_full()
     ev.deposits = [(today - timedelta(days=3), 20_000, 35_000)]  # crossed the $30k T2 floor, not T1's $5k

@@ -8,6 +8,8 @@
   coherence  print the coherence table for a policy and target mode
   activate   check coherence + approvals and report whether the policy can activate
   conformance  run the adapter conformance suite (simulated venue) and write its run record
+  stress     run the stress battery (§7.8) on a policy and write its run record
+  drill      run the P3.5 drills: kill verifier -> entries block; attribution to the penny on replay
 
 Signing happens on the principal's own machine with the standard OpenSSH tool, which
 requires a touch on the key:
@@ -123,6 +125,39 @@ def cmd_conformance(a: argparse.Namespace) -> int:
     return 0 if rec["verdict"] == "PASS" else 1
 
 
+def _write(out: str, name: str, rec: dict) -> None:
+    d = Path(out)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{name}.json").write_text(json.dumps(rec, indent=2, default=str) + "\n")
+
+
+def cmd_stress(a: argparse.Namespace) -> int:
+    from engine.evidence.stress import run_battery
+
+    pol = load_policy(a.policy)
+    rec = run_battery(pol.doc, pol.hash, tier=a.tier)
+    _write(a.out, rec["run_id"], rec)
+    for s in rec["scenarios"]:
+        print(f"  {s['verdict']}  {s['id']:<4} loss {s['loss']:.2%}  {s['name']} [{s['kind']}]")
+    print(f"{rec['verdict']} {rec['run_id']} policy {pol.hash[:12]} tier {a.tier}")
+    return 0 if rec["verdict"] == "PASS" or a.report_only else 1
+
+
+def cmd_drill(a: argparse.Namespace) -> int:
+    from engine.evidence.drills import kill_verifier_drill, replay_evidence
+    from engine.replay.paper import ReplayConfig, replay
+    from engine.router.router import StrategyRouter
+    from tests.helpers.fixtures import universe
+
+    pol, u = load_policy(a.policy), universe()
+    r = replay(u, pol.doc, StrategyRouter(pol.doc), ReplayConfig(mu_q_daily=0.001))
+    recs = [kill_verifier_drill(), replay_evidence(r.trades, {s.instrument_id: s for s in u}, nav0=30_000)]
+    for rec in recs:
+        _write(a.out, rec["drill"].lower(), rec)
+        print(f"{'PASS' if rec['passed'] else 'FAIL'}  {rec['drill']}")
+    return 0 if all(x["passed"] for x in recs) else 1
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -167,6 +202,18 @@ def main() -> int:
     cf.add_argument("--connector", default="kraken-spot")
     cf.add_argument("--out", default="runs/conformance")
     cf.set_defaults(fn=cmd_conformance)
+
+    st = sub.add_parser("stress")
+    st.add_argument("--policy")
+    st.add_argument("--tier", default="T2")
+    st.add_argument("--out", default="runs/stress")
+    st.add_argument("--report-only", action="store_true", help="exit 0 even when the battery fails")
+    st.set_defaults(fn=cmd_stress)
+
+    dr = sub.add_parser("drill")
+    dr.add_argument("--policy")
+    dr.add_argument("--out", default="runs/drills")
+    dr.set_defaults(fn=cmd_drill)
 
     a = p.parse_args()
     return a.fn(a)

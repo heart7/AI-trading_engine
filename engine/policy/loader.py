@@ -63,3 +63,18 @@ def parse_policy(text: str, source: str = "<string>") -> Policy:
 def load_policy(path: str | Path | None = None) -> Policy:
     p = Path(path) if path else POLICY_DIR / "policy-10.4.0.yaml"
     return parse_policy(p.read_text(), source=str(p))
+
+
+def thaw(obj: Any) -> Any:
+    if isinstance(obj, Mapping):
+        return {k: thaw(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [thaw(v) for v in obj]
+    return obj
+
+
+def policy_from_doc(doc: Mapping[str, Any], source: str = "<proposal>") -> Policy:
+    """A proposed policy built in code (e.g. a Settings change). Validated and hashed exactly like a YAML file."""
+    plain = thaw(doc)
+    validate("policy_object", plain)
+    return Policy(doc=_freeze(plain), hash=content_hash(plain), source=source)

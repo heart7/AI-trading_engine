@@ -100,3 +100,21 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Kraken `CancelAllOrdersAfter` sparing stop-loss orders | UQ | if it cancels stops, the dead-man is not used on Kraken (spec §8.7) |
 | Perp connectors (binance-usdm, bybit-v5-linear, kraken-futures) order paths | SN | Strategy B is PAPER-only; registered, not implemented |
 | **P3 exit gate** (conformance green per connector on testnet/demo; race tests; INV-30, 31, 35–40 green) | partly met | race tests and invariants green; testnet conformance blocked |
+
+## P3.5 Evidence plane
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Double-entry, append-only, hash-chained ledger (Decimal, idempotent per source record, chain break → S1 incident) | RV | `engine/evidence/ledger.py` |
+| NAV dual path (ledger vs venue balances) with 0.1% divergence → NAV_DIVERGENCE, entries blocked | RV | `engine/evidence/nav.py` |
+| Unitised TWR, HWM and drawdown on unit value, IRR; deposits never P&L (INV-41) | RV | `engine/evidence/performance.py` |
+| Attribution P0–P5 (BETA, SELECTION, EXECUTION, CARRY, COST) and process view, exact, checked against the ledger (INV-26) | RV; the fixture replay sums to the penny | `engine/evidence/attribution.py`, `engine/evidence/drills.py` |
+| Collateral policy: venue cap, issuer cap, par band, off-exchange reserve, human-executed transfer intents (INV-16) | RV | `engine/evidence/collateral.py` |
+| Stress battery S1–S10 with run record; proposals need a PASS for their own hash (INV-42) | RV; replay scenarios run as synthetic proxies until history is certified | `engine/evidence/stress.py`, `engine/governance/proposals.py` |
+| S4 venue failure vs 40% venue cap | UQ | decision 0004 |
+| Verifier: independent signal, NAV and risk recompute → RECON_BREAK; watchdog 30 s heartbeat | RV; signal agrees with the engine to 1e-15 on fixtures | `engine/evidence/verifier.py` |
+| Drill "kill verifier → entries block" | RV (CI) | `tools/uchfe.py drill` |
+| Encrypted snapshot (AES-256-GCM, key in the secret store), restore with chain check, restore drill | RV | `engine/evidence/backup.py` |
+| Hot standby with fencing token checked in the OMS | RV (fencing, P3) | `engine/execution/oms.py` |
+| Postgres synchronous replica, WAL archive, Object Lock storage, on-call rota | SN | infrastructure, not in this repo yet |
+| **P3.5 exit gate** (kill-verifier drill; attribution to the penny on replay) | met on FIXTURE | CI runs both drills |
