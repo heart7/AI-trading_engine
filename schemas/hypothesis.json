@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/hypothesis.json",
+  "title": "Hypothesis registry entry (\u00a710.2 L4)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "owner",
+    "sleeve",
+    "harness_step",
+    "description",
+    "metric",
+    "mde",
+    "pass_rule",
+    "falsification_rule",
+    "budget_debit",
+    "run_ids",
+    "status",
+    "registered_at",
+    "class"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^H-[A-Z0-9-]+$"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "sleeve": {
+      "enum": [
+        "A_long",
+        "B_short",
+        "B_long",
+        "all"
+      ]
+    },
+    "harness_step": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 9
+    },
+    "description": {
+      "type": "string"
+    },
+    "metric": {
+      "type": "string"
+    },
+    "mde": {
+      "type": "object"
+    },
+    "pass_rule": {
+      "type": "string"
+    },
+    "falsification_rule": {
+      "type": "string"
+    },
+    "budget_debit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "run_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "PRE_REGISTERED",
+        "RUNNING",
+        "PASS",
+        "FAIL",
+        "WITHDRAWN"
+      ]
+    },
+    "registered_at": {
+      "type": "string"
+    },
+    "class": {
+      "const": "HYPOTHESIS"
+    }
+  }
+}

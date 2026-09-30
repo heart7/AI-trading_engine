@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/admissibility_claim.json",
+  "title": "Admissibility claim (\u00a75.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "kind",
+    "class",
+    "snapshot_hash",
+    "policy_hash",
+    "code_version",
+    "created_at",
+    "certified",
+    "payload"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "admissibility_claim"
+    },
+    "class": {
+      "const": "DERIVED"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ttl_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "certified": {
+      "type": "boolean"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair",
+        "bar_close",
+        "admissible",
+        "binding_reason"
+      ],
+      "properties": {
+        "pair": {
+          "type": "string"
+        },
+        "bar_close": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "admissible": {
+          "type": "boolean"
+        },
+        "binding_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/agent_activity_event.json",
+  "title": "Agent activity pointer event (\u00a716.8.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "cycle_id",
+    "agent",
+    "emission_class",
+    "subject",
+    "t_offset_ms",
+    "late",
+    "outcome",
+    "ref_kind",
+    "ref_id",
+    "policy_hash",
+    "code_version",
+    "created_at"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "cycle_id": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "agent": {
+      "enum": [
+        "data_sentinel",
+        "signal_engine",
+        "regime",
+        "strategy_router",
+        "allocator",
+        "risk_authority",
+        "verifier",
+        "oms",
+        "protection_verifier",
+        "watchdog",
+        "reporter"
+      ]
+    },
+    "emission_class": {
+      "enum": [
+        "INFORM",
+        "RECOMMEND",
+        "PROPOSE",
+        "EXECUTE",
+        "ABSTAIN"
+      ]
+    },
+    "subject": {
+      "type": "string"
+    },
+    "instrument_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "t_offset_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deadline_step": {
+      "enum": [
+        "certified",
+        "claims",
+        "intents",
+        "orders",
+        "entry_ladder",
+        null
+      ]
+    },
+    "late": {
+      "type": "boolean"
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "reason_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ref_kind": {
+      "enum": [
+        "claim",
+        "intent",
+        "order",
+        "fill",
+        "incident"
+      ]
+    },
+    "ref_id": {
+      "type": "string"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

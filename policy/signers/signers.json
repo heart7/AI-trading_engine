@@ -1,0 +1,6 @@
+{
+  "note": "Enrolled approval keys (spec §0.4, §17). Only public keys live here. Enrol with tools/uchfe.py enroll. Primary and backup hardware keys are required before the P0 exit gate.",
+  "signers": [
+    {"signer_id": "principal", "role": "principal", "keys": []}
+  ]
+}

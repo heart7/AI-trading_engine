@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/signal_intent.json",
+  "title": "Signal intent: persisted for every evaluation incl. REJECTED and ABSTAINED (\u00a77.1). Free text is forbidden (INV-01).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "intent_id",
+    "instrument_id",
+    "bar_close",
+    "sleeve",
+    "outcome",
+    "gate_ladder",
+    "binding_gate",
+    "claim_refs",
+    "policy_hash",
+    "code_version",
+    "created_at"
+  ],
+  "properties": {
+    "intent_id": {
+      "type": "string"
+    },
+    "instrument_id": {
+      "type": "string"
+    },
+    "bar_close": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sleeve": {
+      "enum": [
+        "A_long",
+        "B_short",
+        "B_long"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "ENTERED",
+        "REJECTED",
+        "ABSTAINED",
+        "EXIT",
+        "HOLD"
+      ]
+    },
+    "gate_ladder": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "gate",
+          "passed"
+        ],
+        "properties": {
+          "gate": {
+            "enum": [
+              "ENGINE_STATE",
+              "TIER_NOT_ACTIVE",
+              "DATA_STALE",
+              "DATA_UNCERTIFIED",
+              "INSUFFICIENT_HISTORY",
+              "NOT_ADMISSIBLE",
+              "NO_BREAKOUT",
+              "T_BELOW_ENTRY",
+              "EVIDENCE_NOT_ON_FILE",
+              "COST_INPUT_STALE",
+              "COST_R_EXCEEDED",
+              "RISK_BUDGET",
+              "MARGIN_INVARIANT",
+              "VENUE_UNHEALTHY",
+              "PROTECTION_UNVERIFIED",
+              "ADL_REDUCE",
+              "CIRCUIT_BREAKER",
+              "CYCLE_TIMEOUT",
+              "VENUE_UNAVAILABLE",
+              "VENUE_NOT_TRADE_ENABLED"
+            ]
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "binding_gate": {
+      "anyOf": [
+        {
+          "enum": [
+            "ENGINE_STATE",
+            "TIER_NOT_ACTIVE",
+            "DATA_STALE",
+            "DATA_UNCERTIFIED",
+            "INSUFFICIENT_HISTORY",
+            "NOT_ADMISSIBLE",
+            "NO_BREAKOUT",
+            "T_BELOW_ENTRY",
+            "EVIDENCE_NOT_ON_FILE",
+            "COST_INPUT_STALE",
+            "COST_R_EXCEEDED",
+            "RISK_BUDGET",
+            "MARGIN_INVARIANT",
+            "VENUE_UNHEALTHY",
+            "PROTECTION_UNVERIFIED",
+            "ADL_REDUCE",
+            "CIRCUIT_BREAKER",
+            "CYCLE_TIMEOUT",
+            "VENUE_UNAVAILABLE",
+            "VENUE_NOT_TRADE_ENABLED"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "claim_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

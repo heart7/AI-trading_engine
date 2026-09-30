@@ -4,10 +4,10 @@ __pycache__/
 .ruff_cache/
 .venv/
 *.egg-info/
-runs/local/
+runs/
 .env
 *.key
 *.pem
-secrets/
+/secrets/
 node_modules/
 dist/

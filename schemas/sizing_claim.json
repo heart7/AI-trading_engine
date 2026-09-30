@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uchfe/schemas/sizing_claim.json",
+  "title": "Sizing claim (\u00a75.5, \u00a76.6)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "kind",
+    "class",
+    "snapshot_hash",
+    "policy_hash",
+    "code_version",
+    "created_at",
+    "certified",
+    "payload"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "sizing_claim"
+    },
+    "class": {
+      "const": "DERIVED"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ttl_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "certified": {
+      "type": "boolean"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instrument_id",
+        "sleeve",
+        "bar_close",
+        "nav_usd",
+        "d",
+        "risk_size",
+        "kelly_cap",
+        "size_ES",
+        "size_liq",
+        "size_map",
+        "v",
+        "m_regime_applied",
+        "size_usd",
+        "binding_limit",
+        "zero_reason"
+      ],
+      "properties": {
+        "instrument_id": {
+          "type": "string"
+        },
+        "sleeve": {
+          "enum": [
+            "A_long",
+            "B_short",
+            "B_long"
+          ]
+        },
+        "bar_close": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "nav_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "d": {
+          "type": "number",
+          "minimum": 0
+        },
+        "risk_size": {
+          "type": "number",
+          "minimum": 0
+        },
+        "kelly_cap": {
+          "type": "number",
+          "minimum": 0
+        },
+        "size_ES": {
+          "type": "number",
+          "minimum": 0
+        },
+        "size_liq": {
+          "type": "number",
+          "minimum": 0
+        },
+        "size_map": {
+          "type": "number",
+          "minimum": 0
+        },
+        "size_margin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "v": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "m_regime_applied": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "size_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "binding_limit": {
+          "type": "string"
+        },
+        "zero_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
