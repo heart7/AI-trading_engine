@@ -33,6 +33,7 @@ class SignalParams:
     atr_n: int
     ewma_lambda: float
     T_entry: float
+    components: tuple[str, ...] = ("B", "M", "Z")  # ablation (§9.3 step 3) removes one; B>0 entry gate stays
 
     @classmethod
     def from_policy(cls, doc: Mapping) -> SignalParams:
@@ -121,7 +122,8 @@ def signal_at(h: np.ndarray, l: np.ndarray, c: np.ndarray, i: int, p: SignalPara
     a = atr(hh, ll, cc, p.atr_n)
     ef, es = ema(cc, p.ema_fast)[-1], ema(cc, p.ema_slow)[-1]
     Z = _clip((ef - es) / a / p.clip_t) if a > 0 else 0.0
-    T = math.fsum((B, M, Z)) / 3.0
+    vals = {"B": B, "M": M, "Z": Z}
+    T = math.fsum(vals[k] for k in p.components) / len(p.components)
     return Signal(B, M, Z, T, None, a, sig)
 
 
@@ -163,6 +165,8 @@ def signal_series(h: np.ndarray, l: np.ndarray, c: np.ndarray, p: SignalParams) 
             ms.append(_clip(rr / (sig * np.sqrt(days)) / p.clip_t) if sig > 0 else 0.0)
         M = float(np.mean(ms))
         Z = _clip((ef[d - 1] - es[d - 1]) / a / p.clip_t) if a > 0 else 0.0
-        out["M"][i], out["Z"][i], out["T"][i] = M, Z, math.fsum((B, M, Z)) / 3.0
+        vals = {"B": B, "M": M, "Z": Z}
+        out["M"][i], out["Z"][i] = M, Z
+        out["T"][i] = math.fsum(vals[k] for k in p.components) / len(p.components)
         out["atr_daily"][i], out["sigma_daily"][i] = a, sig
     return out

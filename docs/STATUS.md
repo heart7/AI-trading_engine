@@ -63,3 +63,15 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 - The per-venue cap of 40% NAV, minus the 10% operating buffer, leaves 30% NAV for Strategy A positions on Kraken.
 - Kelly sizing needs μ_q. Without it the spec gives size 0. P2b will estimate μ_q walk-forward; the fixture replay uses an ASSUMED 0.1% per day.
 - **Gap policy:** real data will have quarantined bars. Today a gap makes the instrument DATA_STALE, and the signal needs a gap-free window. The rule for signals that span a gap is an open question.
+
+## P2b Validation A
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Stats: stationary block bootstrap, Sharpe LB, DSR, MinTRL (matches Appendix B.4), paired Sharpe CI, n_eff | RV | `research/harness/stats.py` |
+| Walk-forward μ_q with embargo (reported; not used by the null test, see decision 0003) | RV | `research/harness/walkforward.py` |
+| Steps 1–5, 7, 8 with run records (config hash, data hash, code version, seed) | RV on FIXTURE | `research/harness/steps.py`, `tools/run_harness.py` |
+| σ* Monte Carlo with null-edge mass, t(4) shocks, loss ladder, ladder-off control (§9.9) | RV | `research/montecarlo/sigma_star.py` |
+| Verdict engine: NOT RUN without run_id, no PASS on CI ≤ 0, offline-only evidence, step 6 never gates SHADOW, promotion caps | RV | `research/harness/verdicts.py` |
+| Verdicts on real history | SN — blocked on data | P1 |
+| σ* choice when the ladder dominates | UQ | `docs/validation/fixture-harness-2026-09-28.md` |

@@ -54,6 +54,8 @@ class SizingInputs:
     book: Sequence[Holding] = ()
     inputs_fresh: bool = True
     gross_now: float = 0.0  # current spot gross notional, USD
+    vol_deflation: bool = True  # §9.3 step 5 A/B only; production policy keeps it on unless removed by proposal
+    kelly_enabled: bool = True  # research plane only: the null test measures the signal without the Kelly cap
 
 
 @dataclass(frozen=True)
@@ -97,14 +99,17 @@ def compute_size(inp: SizingInputs) -> SizingResult:
     zero = None
     if not inp.inputs_fresh:
         zero = "INPUT_NOT_FRESH"
-    elif inp.mu_q_daily is None:
+    elif inp.kelly_enabled and inp.mu_q_daily is None:
         zero = "MU_Q_MISSING"
-    elif inp.mu_q_daily <= 0:
+    elif inp.kelly_enabled and inp.mu_q_daily <= 0:
         zero = "MU_Q_NONPOSITIVE"
     elif inp.d <= 0 or inp.sigma_daily <= 0:
         zero = "BAD_INPUT"
     risk_size = inp.r_tier * inp.nav / inp.d if inp.d > 0 else 0.0
-    kelly = inp.kelly_k * max(0.0, inp.mu_q_daily or 0.0) / (inp.sigma_daily ** 2) * inp.nav if inp.sigma_daily > 0 else 0.0
+    if not inp.kelly_enabled:
+        kelly = math.inf
+    else:
+        kelly = inp.kelly_k * max(0.0, inp.mu_q_daily or 0.0) / (inp.sigma_daily ** 2) * inp.nav if inp.sigma_daily > 0 else 0.0
     ses = size_es(inp) if inp.sigma_daily > 0 else 0.0
     sliq = min(STRESSED_DEPTH * inp.depth_50bp_usd,
                PARTICIPATION * STRESSED_DEPTH * inp.volume_usd_per_min * inp.ttf_ceiling_min)
@@ -117,7 +122,7 @@ def compute_size(inp: SizingInputs) -> SizingResult:
     raw = cands[binding]
     # vol deflation on the book including this position, never > 1 (INV-05)
     book_sigma_ann = math.sqrt(_book_var(inp.book, Holding(raw, inp.sigma_daily), inp.rho_stress)) / inp.nav * math.sqrt(365)
-    v = 1.0 if book_sigma_ann <= 0 else min(1.0, inp.sigma_star_annual / book_sigma_ann)
+    v = 1.0 if (book_sigma_ann <= 0 or not inp.vol_deflation) else min(1.0, inp.sigma_star_annual / book_sigma_ann)
     # regime throttle and stress cut apply only at regime authority T1 (INV-10, §7.6)
     if inp.regime_authority == "T1":
         m = min(1.0, max(0.0, inp.m_regime))
