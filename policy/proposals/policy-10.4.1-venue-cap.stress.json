@@ -1,0 +1,159 @@
+{
+  "policy_hash": "d107aa8ef6338f63ebb25600f380749c915605a9a3b8e2b25a7e9f3e3feba44f",
+  "tier": "T2",
+  "book": {
+    "nav_usd": 30000.0,
+    "positions": [
+      {
+        "instrument": "BTC",
+        "venue": "kraken-spot",
+        "notional": 0.025,
+        "stop_distance": 0.08
+      },
+      {
+        "instrument": "XRP",
+        "venue": "kraken-spot",
+        "notional": 0.025,
+        "stop_distance": 0.08
+      },
+      {
+        "instrument": "ETH",
+        "venue": "kraken-spot",
+        "notional": 0.025,
+        "stop_distance": 0.08
+      },
+      {
+        "instrument": "SOL",
+        "venue": "kraken-spot",
+        "notional": 0.025,
+        "stop_distance": 0.08
+      }
+    ],
+    "venue_cash": {
+      "kraken-spot": 0.1
+    },
+    "stables": {},
+    "offvenue": 0.8
+  },
+  "hard_dd": 0.2,
+  "ttf_ceiling_min": 30,
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "COVID crash Mar 2020: -50% in 2 days, venue outage",
+      "kind": "SYNTHETIC_PROXY",
+      "loss": 0.0172,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S2",
+      "name": "May 2021: -30% intraday, API degradation",
+      "kind": "SYNTHETIC_PROXY",
+      "loss": 0.0126,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S3",
+      "name": "LUNA/UST May 2022: algorithmic stablecoin to ~0, market -40%",
+      "kind": "SYNTHETIC_PROXY",
+      "loss": 0.0126,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S4",
+      "name": "FTX Nov 2022: 100% loss of all assets at the largest-exposure venue",
+      "kind": "SYNTHETIC",
+      "loss": 0.2,
+      "rungs_hit": [
+        "halve",
+        "suspend_downgrade",
+        "flatten_decision"
+      ],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S5",
+      "name": "USDC Mar 2023: depeg to 0.88",
+      "kind": "SYNTHETIC_PROXY",
+      "loss": 0,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S6",
+      "name": "Oct 2025 alt cascade: alts -30% to -70%, BTC -15%",
+      "kind": "SYNTHETIC_PROXY",
+      "loss": 0.01904,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S7",
+      "name": "All instruments -40% in 24h, stops filled 25% beyond trigger",
+      "kind": "SYNTHETIC",
+      "loss": 0.031,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S8",
+      "name": "Execution venue API down 6h with open positions",
+      "kind": "SYNTHETIC",
+      "loss": 0.00984,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S9",
+      "name": "Funding +/-0.30% per 8 hours, scaled to each contract interval, for 10 days",
+      "kind": "SYNTHETIC",
+      "loss": 0.0,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    },
+    {
+      "id": "S10",
+      "name": "Single coin +/-40% gap on a legal ruling",
+      "kind": "SYNTHETIC",
+      "loss": 0.01,
+      "rungs_hit": [],
+      "margin_headroom": "n/a (spot, no posted margin)",
+      "liquidations": 0,
+      "time_to_flatten_min": 0.08,
+      "verdict": "PASS"
+    }
+  ],
+  "verdict": "PASS",
+  "at": "2026-09-29T20:21:25.115218+00:00",
+  "run_id": "stress-cb14e444b16f3818"
+}

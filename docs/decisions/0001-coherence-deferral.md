@@ -1,6 +1,6 @@
 # 0001 — Evidence-dependent coherence checks bind from SHADOW
 
-Status: proposed by the build, awaiting the principal's decision (spec conduct rule 0.2.6: ask, don't guess).
+Status: applied by default on 2026-09-29, when the principal asked the build to continue with its recommended defaults. Reversible: the principal can choose the alternative below at any time.
 
 ## Problem
 Spec §19 makes "coherence check passes" the P0 exit gate. Three §20.2 checks need evidence that cannot exist in P0:

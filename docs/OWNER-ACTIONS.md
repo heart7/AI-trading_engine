@@ -37,3 +37,24 @@ Nothing here is needed for PAPER mode. None of it should be pasted into the chat
 - Open a UK Kraken account (spot, USD pairs) if you have not yet (spec §21 item 10a), and ask Kraken whether its demo environment covers spot so the conformance suite can run there.
 - When a testnet run is wanted: create **read-only** and **trade-only** demo/testnet keys (never with withdrawal permission). They go into the secret store from Settings, not into this repo or the chat.
 - Binance and Bybit stay data-only unless each confirms in writing that a UK resident may trade on the account (INV-43).
+
+## 5. Start the live-data record (P6), when you want to
+Uses public market data only: no account, no API key, no orders. Run it on your own computer, which can reach the
+exchanges (this build's container cannot).
+```
+python3 tools/build_dataset.py --live --pair BTC --pair XRP --pair ETH --pair SOL --out data/live
+python3 tools/shadow.py run --history data/live --journal runs/shadow/journal.jsonl
+python3 tools/shadow.py status
+```
+Then schedule `run` a few minutes after each 4h close (cron `5 0,4,8,12,16,20 * * *`). Until §9.3 steps 1–5, 7, 8
+pass on real history the cycles are recorded at the PAPER rung and do not count toward the 90 shadow days. Moving
+to SHADOW needs your signed PROMOTE approval.
+
+## 6. Decision 0004 (venue cap), if you agree with the default
+`policy/proposals/policy-10.4.1-venue-cap.yaml` lowers the per-venue cap from 40% to 20% so the "venue fails" stress
+scenario stays inside the 20% drawdown budget. It passes the stress battery. It takes effect only if you sign it:
+```
+python3 tools/uchfe.py statement --action POLICY_ACTIVATE --policy policy/proposals/policy-10.4.1-venue-cap.yaml \
+    --rationale "Lower venue cap to 20% until a second UK venue exists (decision 0004)" -o stmt.json
+ssh-keygen -Y sign -f ~/.ssh/uchfe_primary -n uchfe-approval@v1 stmt.json
+```

@@ -157,3 +157,22 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | **P5 exit gate** (rendering negative tests green; no screen computes a material figure) | met on FIXTURE | |
 
 Run it: `python -m engine.bff.server` then open http://127.0.0.1:8710/ (PAPER, FIXTURE, localhost only).
+
+## P6 Shadow
+
+| Deliverable | Status | Where |
+|---|---|---|
+| Mode ladder PAPER → SHADOW → CANARY → LIVE 25/50/100 %: one rung at a time, hardware-signed PROMOTE bound to the move and its step record, step gates (dwell, recon ≥ 99.9%, cost divergence < 25%, zero H1/D1, OBSERVED record), one-rung demotion, capital caps | RV | `engine/modes/ladder.py` |
+| Step 6 never gates SHADOW (INV-29), now also at the ladder | RV | `tests/unit/test_shadow.py` |
+| Shadow runner: frozen policy hash (H1 `PARAMS_NOT_FROZEN`), certified-bar check (D1), same decision code as PAPER, verifier recon per instrument (D1 `RECON_BREAK`), would-be entries priced by model and by the public order book | RV on FIXTURE | `engine/shadow/runner.py` |
+| Append-only, hash-chained shadow journal | RV | `ShadowJournal` |
+| Shadow metrics → step evidence and G2 inputs; FIXTURE never counts | RV | `engine/shadow/metrics.py` |
+| Live keyless feed: store top-up from Kraken, Binance, Bybit public bars (≥ 2 sources), Kraken public order book | RV on recorded payload shapes; live fetch unverified (no exchange access from the build container) | `engine/shadow/feed.py` |
+| Operator tool: `drill` (CI), `run` (one cycle, cron every 4h), `status`, `step6` | RV (drill) | `tools/shadow.py` |
+| Step 6 N1–N4 (definitions ASSUMED, Part 6A not supplied) | RV on FIXTURE; N4 NOT RUN until an OBSERVED 90-day shadow record exists | `research/harness/step6.py`, decision 0006 |
+| Shadow learner comparison: registered hypothesis only, forbidden parameters refused, live policy provably untouched, `applies: false` | RV | `research/learner/shadow_compare.py` |
+| Decision defaults: 0001 applied; 0002 keep 1.5; 0004 option 1 as an unsigned proposal (v10.4.1, venue cap 20%, stress battery PASS for its own hash) | recorded | `docs/decisions/`, `policy/proposals/` |
+| Validation screen showing the shadow record | SN | reads the journal once one exists |
+| **P6 exit gate** (≥ 90 days SHADOW with recon ≥ 99.9%, cost divergence < 25%, zero H1/D1) | not met | needs §9.3 steps on real history, then 90 days of live public data |
+
+Run the drill: `python tools/shadow.py drill`. On a machine with exchange access: see `docs/OWNER-ACTIONS.md` §5.
