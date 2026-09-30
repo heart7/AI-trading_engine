@@ -5,7 +5,8 @@
 - Cost divergence is |sum observed - sum predicted| / sum predicted over the rung's priced would-be entries
   (target < 25%); with no priced entry it is unknown, and an unknown divergence does not pass.
 - H1/D1 counts every incident of class H or D at severity 1 in the rung's cycles (target zero).
-- A journal holding any FIXTURE cycle is FIXTURE class and never feeds a gate (INV-32 carried to evidence).
+- A journal holding any FIXTURE cycle is FIXTURE class and never feeds a gate (INV-32 carried to evidence); an
+  empty record is class NONE and passes nothing.
 """
 from __future__ import annotations
 
@@ -60,7 +61,7 @@ def summarise(journal: Iterable[Mapping[str, Any]], rung: str, *, since: datetim
         h1d1 += [dict(i, bar_close=r["bar_close"]) for i in r.get("incidents", []) if i.get("severity") in ("H1", "D1")]
     days = sum(1 for v in per_day.values() if len(v) >= CYCLES_PER_DAY)
     div = abs(obs - pred) / pred if priced and pred > 0 else None
-    cls = "FIXTURE" if ("FIXTURE" in classes or not classes) else "OBSERVED"
+    cls = "NONE" if not classes else ("FIXTURE" if "FIXTURE" in classes else "OBSERVED")
     return {"rung": rung, "cycles": len(cyc), "days": days, "recon_checks": checks,
             "recon": ok / checks if checks else 0.0, "priced_entries": priced, "unpriced_entries": unpriced,
             "cost_divergence": None if div is None or math.isnan(div) else div, "h1_d1": h1d1, "class": cls}

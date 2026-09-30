@@ -1,0 +1,14 @@
+# Tax policy object v1 (spec §12.4). ASSUMED throughout: not tax advice. A UK accountant signs off this file's
+# hash (tools/golive.py) before LIVE. Values left null are reported as UNSET, never guessed.
+tax_policy_version: "uk-1"
+jurisdiction: UK
+residence: GB
+report_currency: GBP
+matching: [same_day, 30_day, s104]
+fx_source: certified GBP/USD daily rate (spec §11.1)
+scope: worldwide, all accounts held by the owner (Kraken; Binance and Bybit read-only records)
+perps_treatment: ASSUMED   # trading income or capital: a professional determination (§12.4)
+nigeria: ASSUMED           # possible Nigerian claims and UK-Nigeria double-taxation relief: for the adviser
+years:
+  "2026-27": {annual_exempt_gbp: null, reserve_rate: null}
+  "2027-28": {annual_exempt_gbp: null, reserve_rate: null}

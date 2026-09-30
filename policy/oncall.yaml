@@ -1,0 +1,5 @@
+# On-call rota (spec §13.8, §21 item 13). Required from CANARY upward: a day with nobody on call puts the engine in
+# STOP (entries blocked; venue-resident stops still protect open positions). Not needed in PAPER or SHADOW.
+# Add shifts as: - {person: "name", start: 2027-01-01, end: 2027-01-31}
+shifts: []
+stop_windows: []

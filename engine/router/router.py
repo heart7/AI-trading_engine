@@ -158,7 +158,11 @@ class StrategyRouter:
             raise TierRequestRefused(f"{tier}:{failing[0]['gate']}")
         if not isinstance(approval, VerifiedApproval) or approval.approval["action"] != "TIER_UPGRADE":
             raise TierRequestRefused(f"{tier}:UNSIGNED")
+        before = set(self.policy["tiers"][self.state.active]["sleeves"]) if self.state.active != "T0" else set()
         self.state.user_selected = tier
+        for sl in self.policy["tiers"][self.state.active]["sleeves"] if self.state.active != "T0" else ():
+            if sl not in before:
+                self.state.sleeve_since[sl] = now  # new sleeve: half risk budget for the ramp (§3.5)
         self.state.log.append((now, f"upgraded to {tier} by signed approval"))
         return self.state.active
 
@@ -188,12 +192,21 @@ class StrategyRouter:
         t = self.sim_tier(mode)
         return t != "T0" and sleeve in self.policy["tiers"][t]["sleeves"]
 
-    def r_tier(self, sleeve: str, mode: str = "LIVE") -> float:
+    def ramp_factor(self, sleeve: str, now: datetime | None) -> float:
+        """§3.5: a sleeve new at an upgrade runs at `new_sleeve_ramp.factor` of its risk budget for `days`."""
+        since = self.state.sleeve_since.get(sleeve)
+        ramp = self.policy["tiers"]["new_sleeve_ramp"]
+        if since is None or now is None:
+            return 1.0
+        return float(ramp["factor"]) if now - since < timedelta(days=ramp["days"]) else 1.0
+
+    def r_tier(self, sleeve: str, mode: str = "LIVE", now: datetime | None = None) -> float:
         t = self.sim_tier(mode)
         if t == "T0":
             return 0.0
         r = self.policy["tiers"][t]["r"]
-        return r["A"] if sleeve == "A_long" else r.get("B", 0.0)
+        base = r["A"] if sleeve == "A_long" else r.get("B", 0.0)
+        return base * (self.ramp_factor(sleeve, now) if mode in ("CANARY", "LIVE") else 1.0)
 
     def n_max(self, sleeve: str, mode: str = "LIVE") -> int:
         t = self.sim_tier(mode)

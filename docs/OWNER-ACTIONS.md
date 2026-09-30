@@ -58,3 +58,12 @@ python3 tools/uchfe.py statement --action POLICY_ACTIVATE --policy policy/propos
     --rationale "Lower venue cap to 20% until a second UK venue exists (decision 0004)" -o stmt.json
 ssh-keygen -Y sign -f ~/.ssh/uchfe_primary -n uchfe-approval@v1 stmt.json
 ```
+
+## 7. Before CANARY (P7), nothing needed yet
+`python3 tools/golive.py` lists every go-live item and who owns it. The ones only you (or your accountant) can do:
+- An accountant reviews `policy/tax/tax-uk-v1.yaml` and the matching report from `tools/tax_report.py`, fills in the
+  reserve rate and annual exempt amount, and you record their sign-off in `policy/tax/signoff.json` with the config
+  hash the checklist prints (§21 item 10b).
+- An on-call rota in `policy/oncall.yaml` (§21 item 13). Days without cover put the engine in STOP.
+- A Kraken access record (§8.6) and, at the end, your signature on the go-live policy hash.
+

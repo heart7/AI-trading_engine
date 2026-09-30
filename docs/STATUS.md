@@ -10,7 +10,7 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | JSON-Schema single source: policy object, signal/admissibility/regime/sizing/tier claims, signal_intent, agent_activity_event, hypothesis, approval, run record | RV | `schemas/` |
 | Policy object v10.4.0 (verbatim §20.1), YAML 1.2 number parsing, content hash | RV | `policy/policy-10.4.0.yaml`, `engine/policy/loader.py` |
 | Coherence checks §20.2 (C01–C15) plus C16 drawdown rungs monotone | RV | `engine/policy/coherence.py` |
-| Evidence checks C08/C13/C15 in PAPER | UQ | decision 0001 |
+| Evidence checks C08/C13/C15 in PAPER | decided by default (2026-09-29) | decision 0001: DEFERRED in PAPER, bind from SHADOW |
 | Single-signer approvals: hardware-key (FIDO2 `sk-`) SSHSIG verification, user-presence flag, rationale inside the signed bytes, counter replay check, cooling-off field honoured (0h) | RV | `engine/governance/` |
 | Principal's hardware keys enrolled (primary + backup) | SN — owner action | `docs/OWNER-ACTIONS.md` |
 | Policy v10.4.0 signed by the principal | SN — owner action | `docs/OWNER-ACTIONS.md` |
@@ -111,7 +111,7 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Attribution P0–P5 (BETA, SELECTION, EXECUTION, CARRY, COST) and process view, exact, checked against the ledger (INV-26) | RV; the fixture replay sums to the penny | `engine/evidence/attribution.py`, `engine/evidence/drills.py` |
 | Collateral policy: venue cap, issuer cap, par band, off-exchange reserve, human-executed transfer intents (INV-16) | RV | `engine/evidence/collateral.py` |
 | Stress battery S1–S10 with run record; proposals need a PASS for their own hash (INV-42) | RV; replay scenarios run as synthetic proxies until history is certified | `engine/evidence/stress.py`, `engine/governance/proposals.py` |
-| S4 venue failure vs 40% venue cap | UQ | decision 0004 |
+| S4 venue failure vs 40% venue cap | default chosen: unsigned v10.4.1 proposal, cap 20% (stress PASS) | decision 0004 |
 | Verifier: independent signal, NAV and risk recompute → RECON_BREAK; watchdog 30 s heartbeat | RV; signal agrees with the engine to 1e-15 on fixtures | `engine/evidence/verifier.py` |
 | Drill "kill verifier → entries block" | RV (CI) | `tools/uchfe.py drill` |
 | Encrypted snapshot (AES-256-GCM, key in the secret store), restore with chain check, restore drill | RV | `engine/evidence/backup.py` |
@@ -126,7 +126,7 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | CCMRM regime layer: U/D/R/S states (rule ASSUMED), 2-bar confirmation, decayed counts over H, Dirichlet posteriors with 90% intervals, ESS, throttle mapping (reproduces the v9.1 fixtures), binding reasons, schema-valid `regime_claim` | RV | `engine/regime/ccmrm.py` |
 | Authority T0: sizing multiplier is always 1, no stress cut | RV | `RegimeLayer.sizing_multiplier` |
 | Era homogeneity chi-square, information horizon k*, ECE calibration | RV (functions), SN (UI wiring) | `engine/regime/ccmrm.py` |
-| Step 6 (N1–N4 regime validation) | SN | runs during SHADOW (P6) |
+| Step 6 (N1–N4 regime validation) | RV on FIXTURE (P6) | `research/harness/step6.py` |
 | Contract spec versioning: material change → entries blocked, liquidation distances recomputed, re-approval (INV-25) | RV | `engine/strategy_b/contracts.py` |
 | Conditional funding per book, zero-or-adverse default, outcome-weighted hold, perp cost gate with carry and carry-risk terms (INV-17, 18) | RV | `engine/strategy_b/funding.py` |
 | Funding interval only from the spec; lint test for hard-coded intervals (INV-24) | RV | `tests/negative/test_p4_invariants.py` |
@@ -172,7 +172,25 @@ Run it: `python -m engine.bff.server` then open http://127.0.0.1:8710/ (PAPER, F
 | Step 6 N1–N4 (definitions ASSUMED, Part 6A not supplied) | RV on FIXTURE; N4 NOT RUN until an OBSERVED 90-day shadow record exists | `research/harness/step6.py`, decision 0006 |
 | Shadow learner comparison: registered hypothesis only, forbidden parameters refused, live policy provably untouched, `applies: false` | RV | `research/learner/shadow_compare.py` |
 | Decision defaults: 0001 applied; 0002 keep 1.5; 0004 option 1 as an unsigned proposal (v10.4.1, venue cap 20%, stress battery PASS for its own hash) | recorded | `docs/decisions/`, `policy/proposals/` |
-| Validation screen showing the shadow record | SN | reads the journal once one exists |
+| Validation screen showing the shadow record | RV | `shadow_record` in `engine/bff/projections.py`; empty until a journal exists |
 | **P6 exit gate** (≥ 90 days SHADOW with recon ≥ 99.9%, cost divergence < 25%, zero H1/D1) | not met | needs §9.3 steps on real history, then 90 days of live public data |
 
 Run the drill: `python tools/shadow.py drill`. On a machine with exchange access: see `docs/OWNER-ACTIONS.md` §5.
+
+## P7 Canary → Live (offline parts)
+
+| Deliverable | Status | Where |
+|---|---|---|
+| UK CGT matching per asset across all accounts: same day, 30 days (after every same-day match), section 104 pool; GBP at the certified daily rate; fees in allowable cost; tax years 6 Apr–5 Apr | RV on constructed cases | `engine/tax/uk.py` |
+| Reserve above the annual exempt amount; UNSET (never guessed) while the rate or exempt amount is undeclared | RV | `policy/tax/tax-uk-v1.yaml` (ASSUMED values null) |
+| Tax export: per-disposal matching CSV for the accountant, per-year summary | RV | `tools/tax_report.py` |
+| Perps tax treatment, loss carry-forward, Nigeria double-taxation position | SN — ASSUMED, for the accountant | §12.4 |
+| New-sleeve ramp after an upgrade: half risk budget for 30 days at CANARY/LIVE (§3.5) | RV | `StrategyRouter.ramp_factor` |
+| Go-live checklist on the Governance screen | RV | `engine/bff/projections.py` |
+| Canary and live-ramp capital caps per rung; nobody on call from CANARY up → STOP | RV | `engine/modes/canary.py`, `policy/oncall.yaml` (empty) |
+| Profit allocation: reinvest % change needs a signed PROFIT_ALLOCATION approval over the exact change; sweeps are human-executed transfer intents after the tax reserve | RV | `engine/governance/profit_allocation.py` |
+| Runbooks for every incident class the engine can open, plus dead-man defaults and the loss-review cadence; incident rows link their runbook | RV (test: no incident without a runbook) | `ops/runbooks/` |
+| Go-live checklist (coherence for LIVE, signed go-live hash, §9.3 steps, shadow and canary records, accountant sign-off bound to the tax config hash, reserve declared, on-call cover, access record) | RV; today 0 of 9 met | `engine/governance/golive.py`, `tools/golive.py` |
+| EOD and monthly reports from claims only, references appendix, REPORTED narrative citing figure ids, stress battery and ASSUMED items due | RV on FIXTURE | `engine/reports/reports.py`, `tools/report.py` |
+| **P7 exit gate** (go-live policy hash signed; accountant sign-off on tax config) | not met | owner and accountant actions; P6 record first |
+
