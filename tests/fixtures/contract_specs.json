@@ -1,0 +1,13 @@
+{
+  "_note": "FIXTURE contract specs (a stand-in for a venue capability snapshot). Intervals differ on purpose so that nothing can assume one value.",
+  "specs": [
+    {"instrument_id": "FIXTURE_BTC", "venue": "paper-perp", "valid_from": "2017-01-01T00:00:00Z", "tick": 0.1, "lot": 0.001,
+     "mm_schedule": [[1000000, 0.004], [5000000, 0.005], [1e12, 0.01]], "funding_interval_h": 8, "funding_cap": 0.0075, "settlement_asset": "USDT"},
+    {"instrument_id": "FIXTURE_ETH", "venue": "paper-perp", "valid_from": "2017-01-01T00:00:00Z", "tick": 0.01, "lot": 0.01,
+     "mm_schedule": [[1000000, 0.005], [1e12, 0.01]], "funding_interval_h": 8, "funding_cap": 0.0075, "settlement_asset": "USDT"},
+    {"instrument_id": "FIXTURE_XRP", "venue": "paper-perp", "valid_from": "2017-01-01T00:00:00Z", "tick": 0.0001, "lot": 1,
+     "mm_schedule": [[500000, 0.01], [1e12, 0.02]], "funding_interval_h": 4, "funding_cap": 0.02, "settlement_asset": "USDT"},
+    {"instrument_id": "FIXTURE_SOL", "venue": "paper-perp", "valid_from": "2017-01-01T00:00:00Z", "tick": 0.001, "lot": 0.1,
+     "mm_schedule": [[500000, 0.01], [1e12, 0.02]], "funding_interval_h": 1, "funding_cap": 0.02, "settlement_asset": "USDT"}
+  ]
+}

@@ -118,3 +118,24 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Hot standby with fencing token checked in the OMS | RV (fencing, P3) | `engine/execution/oms.py` |
 | Postgres synchronous replica, WAL archive, Object Lock storage, on-call rota | SN | infrastructure, not in this repo yet |
 | **P3.5 exit gate** (kill-verifier drill; attribution to the penny on replay) | met on FIXTURE | CI runs both drills |
+
+## P4 Regime layer + Strategy B core (PAPER)
+
+| Deliverable | Status | Where |
+|---|---|---|
+| CCMRM regime layer: U/D/R/S states (rule ASSUMED), 2-bar confirmation, decayed counts over H, Dirichlet posteriors with 90% intervals, ESS, throttle mapping (reproduces the v9.1 fixtures), binding reasons, schema-valid `regime_claim` | RV | `engine/regime/ccmrm.py` |
+| Authority T0: sizing multiplier is always 1, no stress cut | RV | `RegimeLayer.sizing_multiplier` |
+| Era homogeneity chi-square, information horizon k*, ECE calibration | RV (functions), SN (UI wiring) | `engine/regime/ccmrm.py` |
+| Step 6 (N1–N4 regime validation) | SN | runs during SHADOW (P6) |
+| Contract spec versioning: material change → entries blocked, liquidation distances recomputed, re-approval (INV-25) | RV | `engine/strategy_b/contracts.py` |
+| Conditional funding per book, zero-or-adverse default, outcome-weighted hold, perp cost gate with carry and carry-risk terms (INV-17, 18) | RV | `engine/strategy_b/funding.py` |
+| Funding interval only from the spec; lint test for hard-coded intervals (INV-24) | RV | `tests/negative/test_p4_invariants.py` |
+| Sizing §6.6: isolated margin only (INV-15), liquidation buffer, leverage cap, Σ margin ≤ φ × hard DD (INV-14), gross and net caps | RV | `engine/strategy_b/margin.py` |
+| ADL controls, ADL_EVENT incident, excluded from training (INV-22) | RV | `engine/strategy_b/adl.py` |
+| Admission by portfolio time-to-flatten and B universe filters (INV-23) | RV | `engine/admissibility/ttf.py` |
+| Deflation parameter by test type (INV-19); time-stop hypotheses need the tail-share guardrail (INV-18) | RV | `research/harness/stats.py`, `research/registry/registry.py` |
+| B_short / B_long PAPER replay; harness steps 1–5, 7, 8 per book | RV on FIXTURE | `engine/replay/perp.py`, `tools/run_harness.py --sleeve` |
+| B verdicts | on file (FIXTURE): both books PAPER | `docs/validation/fixture-harness-b-2026-09-28.md` |
+| Perp connector order paths (binance-usdm, bybit-v5-linear, kraken-futures) | SN | registered; PAPER only, and execution_allowed is empty for B |
+| Real funding history and perp specs | SN — blocked | P1 data access |
+| **P4 exit gate** (INV-14..25 green; B verdicts on file) | met on FIXTURE | |

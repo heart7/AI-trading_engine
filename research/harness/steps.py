@@ -6,7 +6,7 @@ through the verdict engine. Nothing here can mark a step PASS without the automa
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
@@ -39,6 +39,8 @@ class HarnessContext:
     cash_rate_annual: float = 0.0  # benchmark (§5.9): 3m T-bill, OBSERVED; 0 until the rate feed exists (ASSUMED)
     test_years: float = 1.0
     runs: list[dict] = field(default_factory=list)
+    # Replay used by every step. None = Strategy A spot replay; Strategy B books pass `perp_runner(...)`.
+    runner: Callable[..., ReplayResult] | None = None
     _base: ReplayResult | None = None
     _mu: dict | None = None
 
@@ -74,6 +76,8 @@ def _run(ctx: HarnessContext, *, costs: CostModel | None = None, **cfg) -> Repla
     establish, so testing with it on would size every trade to zero (docs/decisions/0003). Trading starts only in
     walk-forward test windows, so returns before the first test window are excluded by _oos."""
     cfg.pop("mu", None)
+    if ctx.runner is not None:
+        return ctx.runner(costs=costs, **cfg)
     if ctx._mu is None:
         ctx._mu = _mu_schedule(ctx)
     return replay(ctx.series, ctx.policy, StrategyRouter(ctx.policy), ReplayConfig(mu_q_daily=None, kelly_enabled=False, **cfg), costs)
@@ -223,3 +227,21 @@ def run_all(ctx: HarnessContext) -> list[StepRecord]:
     for fn in (step2_null, step3_ablation, step4_costs, step5_voldeflation, step7_regimes, step8_sigma_star):
         out.append(fn(ctx))
     return out
+
+
+def perp_runner(series: Sequence[Series], policy: Mapping, specs: Mapping, funding: Mapping, book: str
+                ) -> Callable[..., ReplayResult]:
+    """Harness runner for a Strategy B book. Step 4's cost tornado scales the perp fee schedule by the same factors
+    it applies to spot fees; spread and slippage are passed through."""
+    from engine.replay.perp import PERP_COSTS, PerpConfig, replay_perp
+    spot = CostModel()
+
+    def run(costs: CostModel | None = None, **cfg) -> ReplayResult:
+        c = PERP_COSTS
+        if costs is not None:
+            mult = costs.maker_fee / spot.maker_fee
+            c = CostModel(maker_fee=PERP_COSTS.maker_fee * mult, taker_fee=PERP_COSTS.taker_fee * mult,
+                          half_spread=costs.half_spread, slippage_q75=costs.slippage_q75)
+        keep = {k: v for k, v in cfg.items() if k in ("components", "vol_deflation", "sigma_star")}
+        return replay_perp(series, policy, specs, funding, PerpConfig(book=book, **keep), c)
+    return run

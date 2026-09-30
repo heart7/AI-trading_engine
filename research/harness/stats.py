@@ -107,3 +107,28 @@ def mean_return_ci(r: np.ndarray, *, mean_block: float = 20, reps: int = 1000, s
 def n_eff(n_raw: int, m: int, rho_bar: float) -> float:
     """Spec §9.2: n_eff = n_raw / [1 + (m - 1) rho_bar]."""
     return n_raw / (1 + (m - 1) * rho_bar)
+
+
+class WrongDeflation(Exception):
+    pass
+
+
+def n_eff_for_test(n_raw: int, m: int, *, test: str, rho: float, rho_kind: str) -> float:
+    """INV-19: the deflation parameter is chosen by test type. Paired tests (ablation, A/B variants) deflate with
+    rho_paired, the correlation of paired differences; single-series tests use rho_return. Mixing them is refused."""
+    expected = {"paired": "rho_paired", "single": "rho_return"}.get(test)
+    if expected is None:
+        raise ValueError(f"unknown test type {test}")
+    if rho_kind != expected:
+        raise WrongDeflation(f"{test} test must deflate with {expected}, not {rho_kind}")
+    return n_eff(n_raw, m, rho)
+
+
+def tail_contribution_share(pnl: np.ndarray, top: float = 0.10) -> float:
+    """Share of total positive P&L earned by the best `top` fraction of trades (the right tail trend lives on)."""
+    x = np.sort(np.asarray(pnl, float))[::-1]
+    pos = x[x > 0].sum()
+    if pos <= 0:
+        return 0.0
+    k = max(1, int(math.ceil(top * len(x))))
+    return float(x[:k].clip(min=0).sum() / pos)
