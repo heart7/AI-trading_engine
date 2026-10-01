@@ -349,6 +349,11 @@ def _fake_exchange(start, n, now):
             s = int(q["start"]) / 1000
             got = [[str(int(t.timestamp() * 1000)), str(o), str(h), str(lo), str(c * 0.9998), "7", "0"] for t, o, h, lo, c in rows if t.timestamp() >= s]
             return {"retCode": 0, "result": {"list": list(reversed(got[:1000]))}}
+        if "bitstamp" in u.netloc:
+            s = int(q["start"])
+            got = [{"timestamp": str(int(t.timestamp())), "open": str(o), "high": str(h), "low": str(lo),
+                    "close": str(c * 1.0001), "volume": "7"} for t, o, h, lo, c in rows if t.timestamp() >= s]
+            return {"data": {"pair": "BTC/USD", "ohlc": got[:1000]}}
         raise AssertionError(url)
     return fetch
 
@@ -362,6 +367,35 @@ def test_refresh_certifies_from_three_public_sources_and_appends_only_new_bars(t
     s = feed.load_history(feed.store_path(tmp_path, "BTC"))
     assert s.certified and len(s.c) == 30 and int(s.open_time[-1]) == int((datetime(2026, 9, 28, 12, tzinfo=timezone.utc) - H4).timestamp())
     assert s.instrument_id == "kraken-spot:BTC/USD"
+
+
+def test_refresh_skips_geo_blocked_venues_and_still_certifies_from_two(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "binance" in url or "bybit" in url:
+            raise urllib.error.HTTPError(url, 451, "restricted location", None, None)
+        return inner(url)
+    assert feed.refresh(tmp_path, "BTC", now, fetch=fetch) == 30
+    assert set(feed.last_skipped) == {"binance-spot", "bybit-v5-spot"}
+    from engine.data.store import AppendOnlyLog
+    recs = list(AppendOnlyLog(feed.store_path(tmp_path, "BTC")).records())
+    assert all(r["sources"] == ["bitstamp", "kraken-spot"] for r in recs)
+
+
+def test_refresh_with_kraken_alone_certifies_nothing(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "kraken" not in url:
+            raise urllib.error.URLError("proxy denied")
+        return inner(url)
+    feed.refresh(tmp_path, "BTC", now, fetch=fetch)
+    assert len(feed.last_skipped) == 3 and feed.load_history(feed.store_path(tmp_path, "BTC")) is None
 
 
 def test_load_history_keeps_the_newest_contiguous_run(tmp_path):

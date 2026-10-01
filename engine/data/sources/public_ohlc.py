@@ -1,5 +1,8 @@
 """Public market-data sources for 4h OHLCV (spec §8.1: Binance and Bybit are data sources; Kraken executes).
 
+Bitstamp (native USD pairs) is a second reference source for hosts where Binance and Bybit refuse the caller's
+location; `venue_sources` drops an unreachable venue and names it, and certification still needs >= 2 sources.
+
 Parsers are pure and tested on recorded payload shapes. Fetchers use only public, unauthenticated
 endpoints (no API key). Status: parsers run-verified on sample payloads; live fetches implemented,
 unverified (the build container cannot reach exchange APIs). Endpoints ASSUMED per A-PERMISSION-PROBES
@@ -19,7 +22,7 @@ from engine.data.bars import H4, Bar
 Fetch = Callable[[str], Any]
 
 
-ALLOWED_HOSTS = ("https://api.kraken.com/", "https://api.binance.com/", "https://api.bybit.com/")
+ALLOWED_HOSTS = ("https://api.kraken.com/", "https://api.binance.com/", "https://api.bybit.com/", "https://www.bitstamp.net/")
 
 
 def _http_json(url: str) -> Any:
@@ -104,6 +107,59 @@ def fetch_bybit(symbol: str, start: datetime, now: datetime, category: str = "sp
         out.extend(page)
         t = page[-1].open_time + H4
     return out
+
+
+# --- Bitstamp: GET /api/v2/ohlc/btcusd/?step=14400&start=<unix s>&limit=1000 (USD-quoted, no re-quote) ---
+BITSTAMP = "https://www.bitstamp.net/api/v2/ohlc"
+
+
+def parse_bitstamp(payload: dict, now: datetime) -> list[Bar]:
+    if "data" not in payload:
+        raise RuntimeError(f"bitstamp error: {payload.get('errors') or payload.get('reason') or payload}")
+    rows = payload["data"]["ohlc"]
+    bars = [Bar(_utc(int(r["timestamp"])), float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]),
+                float(r["volume"])) for r in rows]
+    return _complete(sorted(bars, key=lambda b: b.open_time), now)
+
+
+def fetch_bitstamp(pair: str, start: datetime, now: datetime, fetch: Fetch = _http_json) -> list[Bar]:
+    out: list[Bar] = []
+    t = start
+    while t < now:
+        q = urllib.parse.urlencode({"step": 14400, "start": int(t.timestamp()), "limit": 1000})
+        page = [b for b in parse_bitstamp(fetch(f"{BITSTAMP}/{pair}/?{q}"), now) if b.open_time >= t]
+        if not page:
+            break
+        out.extend(page)
+        t = page[-1].open_time + H4
+    return out
+
+
+def venue_sources(base: str, kraken_pair: str, since: datetime, now: datetime,
+                  fetch: Fetch = _http_json) -> tuple[dict[str, list[Bar]], dict[str, str]]:
+    """Per-venue 4h bars for <base>/USD, Kraken first (the primary). A reference venue that refuses the request
+    (geo-block, outage) is left out and reported in the second dict; Kraken failing is fatal."""
+    out = {"kraken-spot": fetch_kraken(kraken_pair, since, now, fetch=fetch)}
+    skipped: dict[str, str] = {}
+    usdt: dict[datetime, float] | None = None
+
+    def usdt_rate() -> dict[datetime, float]:
+        nonlocal usdt
+        if usdt is None:
+            usdt = {b.open_time: b.c for b in fetch_kraken("USDTUSD", since, now, fetch=fetch)}
+        return usdt
+
+    venues = [
+        ("bitstamp", lambda: fetch_bitstamp(f"{base.lower()}usd", since, now, fetch=fetch)),
+        ("binance-spot", lambda: convert_quote(fetch_binance(f"{base}USDT", since, now, fetch=fetch), usdt_rate())),
+        ("bybit-v5-spot", lambda: convert_quote(fetch_bybit(f"{base}USDT", since, now, fetch=fetch), usdt_rate())),
+    ]
+    for name, get in venues:
+        try:
+            out[name] = get()
+        except (OSError, RuntimeError) as e:  # HTTPError/URLError are OSErrors
+            skipped[name] = f"{type(e).__name__}: {e}"
+    return out, skipped
 
 
 def convert_quote(bars: list[Bar], rate: dict[datetime, float]) -> list[Bar]:

@@ -88,6 +88,8 @@ def cmd_run(a: argparse.Namespace) -> int:
     for base in bases:
         if not a.offline:
             feed.refresh(Path(a.history), base, now)
+            for venue, why in feed.last_skipped.items():
+                print(f"{base}: skipped {venue} ({why})", file=sys.stderr)
         s = feed.load_history(feed.store_path(Path(a.history), base))
         if s is None:
             print(f"{base}: no certified history in {a.history}", file=sys.stderr)
