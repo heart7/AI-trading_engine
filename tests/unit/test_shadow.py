@@ -418,6 +418,11 @@ def test_kraken_only_certifies_when_allowed_and_flags_single_source(tmp_path):
     assert not feed.single_source_at(path, datetime(2026, 9, 29, tzinfo=timezone.utc))
 
 
+def test_base_of_handles_fixture_and_live_ids():
+    from engine.bff.session import base_of
+    assert base_of("FIXTURE_BTC") == "BTC" and base_of("kraken-spot:SOL/USD") == "SOL"
+
+
 def test_new_journal_reads_as_empty(tmp_path):
     from engine.shadow.runner import ShadowJournal
     assert ShadowJournal(tmp_path / "none.jsonl").records() == []

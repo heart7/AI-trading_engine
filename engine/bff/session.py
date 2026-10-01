@@ -53,7 +53,8 @@ def pair_name(instrument_id: str) -> str:
 
 
 def base_of(instrument_id: str) -> str:
-    return instrument_id.replace("FIXTURE_", "")
+    """FIXTURE_BTC -> BTC; live ids such as kraken-spot:BTC/USD -> BTC."""
+    return instrument_id.replace("FIXTURE_", "").rsplit(":", 1)[-1].split("/", 1)[0]
 
 
 def t_band(c: np.ndarray, sig: dict[str, np.ndarray], policy: dict, idx: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

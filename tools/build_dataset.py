@@ -6,7 +6,8 @@
 
 Live mode reads public endpoints only (no keys): Kraken <pair>/USD as the primary, Bitstamp <pair>/USD, and Binance
 and Bybit <pair>/USDT re-quoted to USD via Kraken USDT/USD. Venues that refuse the request are skipped and named. Kraken's public OHLC returns only the
-latest 720 bars, so deep history needs a vendor (spec §21 item 11).
+latest 720 bars; `--days` beyond 120 backfills from Bitstamp alone (those bars are single-source, so they need
+--allow-single-source and are stored flagged). A paid vendor remains the spec's deep-history route (§21 item 11).
 """
 from __future__ import annotations
 
@@ -51,6 +52,8 @@ def main() -> int:
     ap.add_argument("--pair", action="append")
     ap.add_argument("--years", type=float, default=9.0)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--days", type=int, default=120,
+                    help="live history depth; Kraken serves only the last 120 days, older bars come from Bitstamp alone")
     ap.add_argument("--allow-single-source", action="store_true",
                     help="certify Kraken-only bars (flagged single_source) when no second venue answers")
     a = ap.parse_args()
@@ -67,12 +70,12 @@ def main() -> int:
             write(out, name, ds)
         return 0
     for base in a.pair or ["BTC"]:
-        since = end - 720 * H4
+        since = end - a.days * 6 * H4
         per_source, skipped = src.venue_sources(base, KRAKEN_PAIRS[base], since, now)
         for venue, why in skipped.items():
             print(f"{base}: skipped {venue} ({why})", file=sys.stderr)
         ds = certify(f"kraken-spot:{base}/USD", per_source,
-                     start=per_source["kraken-spot"][0].open_time, end=end, eras=ERAS,
+                     start=min(b[0].open_time for b in per_source.values() if b), end=end, eras=ERAS,
                      single_venue=a.allow_single_source)
         write(out, f"{base}-USD", ds)
     return 0
