@@ -349,6 +349,11 @@ def _fake_exchange(start, n, now):
             s = int(q["start"]) / 1000
             got = [[str(int(t.timestamp() * 1000)), str(o), str(h), str(lo), str(c * 0.9998), "7", "0"] for t, o, h, lo, c in rows if t.timestamp() >= s]
             return {"retCode": 0, "result": {"list": list(reversed(got[:1000]))}}
+        if "bitstamp" in u.netloc:
+            s = int(q["start"])
+            got = [{"timestamp": str(int(t.timestamp())), "open": str(o), "high": str(h), "low": str(lo),
+                    "close": str(c * 1.0001), "volume": "7"} for t, o, h, lo, c in rows if t.timestamp() >= s]
+            return {"data": {"pair": "BTC/USD", "ohlc": got[:1000]}}
         raise AssertionError(url)
     return fetch
 
@@ -362,6 +367,65 @@ def test_refresh_certifies_from_three_public_sources_and_appends_only_new_bars(t
     s = feed.load_history(feed.store_path(tmp_path, "BTC"))
     assert s.certified and len(s.c) == 30 and int(s.open_time[-1]) == int((datetime(2026, 9, 28, 12, tzinfo=timezone.utc) - H4).timestamp())
     assert s.instrument_id == "kraken-spot:BTC/USD"
+
+
+def test_refresh_skips_geo_blocked_venues_and_still_certifies_from_two(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "binance" in url or "bybit" in url:
+            raise urllib.error.HTTPError(url, 451, "restricted location", None, None)
+        return inner(url)
+    assert feed.refresh(tmp_path, "BTC", now, fetch=fetch) == 30
+    assert set(feed.last_skipped) == {"binance-spot", "bybit-v5-spot"}
+    from engine.data.store import AppendOnlyLog
+    recs = list(AppendOnlyLog(feed.store_path(tmp_path, "BTC")).records())
+    assert all(r["sources"] == ["bitstamp", "kraken-spot"] for r in recs)
+
+
+def test_refresh_with_kraken_alone_certifies_nothing(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "kraken" not in url:
+            raise urllib.error.URLError("proxy denied")
+        return inner(url)
+    feed.refresh(tmp_path, "BTC", now, fetch=fetch)
+    assert len(feed.last_skipped) == 3 and feed.load_history(feed.store_path(tmp_path, "BTC")) is None
+
+
+def test_kraken_only_certifies_when_allowed_and_flags_single_source(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "kraken" not in url:
+            raise urllib.error.URLError("proxy denied")
+        return inner(url)
+    assert feed.refresh(tmp_path, "BTC", now, fetch=fetch, allow_single_source=True) == 30
+    path = feed.store_path(tmp_path, "BTC")
+    assert feed.load_history(path).certified
+    assert feed.single_source_at(path, datetime(2026, 9, 28, 8, tzinfo=timezone.utc))
+    # once a second venue answers, new bars carry two sources and lose the flag
+    later = now + 4 * H4
+    feed.refresh(tmp_path, "BTC", later, fetch=_fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 70, later),
+                 allow_single_source=True)
+    assert not feed.single_source_at(path, datetime(2026, 9, 29, tzinfo=timezone.utc))
+
+
+def test_base_of_handles_fixture_and_live_ids():
+    from engine.bff.session import base_of
+    assert base_of("FIXTURE_BTC") == "BTC" and base_of("kraken-spot:SOL/USD") == "SOL"
+
+
+def test_new_journal_reads_as_empty(tmp_path):
+    from engine.shadow.runner import ShadowJournal
+    assert ShadowJournal(tmp_path / "none.jsonl").records() == []
 
 
 def test_load_history_keeps_the_newest_contiguous_run(tmp_path):

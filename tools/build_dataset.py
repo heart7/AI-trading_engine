@@ -4,9 +4,10 @@
   python3 tools/build_dataset.py --fixture --out data/fixture     # offline FIXTURE build
   python3 tools/build_dataset.py --live --pair BTC --out data/live # needs exchange network access
 
-Live mode reads public endpoints only (no keys): Kraken <pair>/USD as the primary, Binance and
-Bybit <pair>/USDT re-quoted to USD via Kraken USDT/USD. Kraken's public OHLC returns only the
-latest 720 bars, so deep history needs a vendor (spec §21 item 11).
+Live mode reads public endpoints only (no keys): Kraken <pair>/USD as the primary, Bitstamp <pair>/USD, and Binance
+and Bybit <pair>/USDT re-quoted to USD via Kraken USDT/USD. Venues that refuse the request are skipped and named. Kraken's public OHLC returns only the
+latest 720 bars; `--days` beyond 120 backfills from Bitstamp alone (those bars are single-source, so they need
+--allow-single-source and are stored flagged). A paid vendor remains the spec's deep-history route (§21 item 11).
 """
 from __future__ import annotations
 
@@ -35,7 +36,8 @@ def write(out: Path, name: str, ds) -> None:
         b = cb.bar
         log.append({"instrument_id": cb.instrument_id, "open_time": b.open_time.isoformat(), "o": b.o, "h": b.h,
                     "l": b.l, "c": b.c, "v": b.v, "sources": list(cb.sources), "era": cb.era,
-                    "dispersion": cb.dispersion, "certified": cb.certified, "content_hash": cb.content_hash})
+                    "dispersion": cb.dispersion, "certified": cb.certified, "single_source": cb.single_source,
+                    "content_hash": cb.content_hash})
     (out / f"{name}.quality.json").write_text(json.dumps(ds.report.as_dict(), indent=2) + "\n")
     r = ds.report
     print(f"{name}: {r.certified_bars}/{r.expected_bars} bars ({r.coverage:.2%}), gaps={len(r.gaps)}, "
@@ -50,6 +52,10 @@ def main() -> int:
     ap.add_argument("--pair", action="append")
     ap.add_argument("--years", type=float, default=9.0)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--days", type=int, default=120,
+                    help="live history depth; Kraken serves only the last 120 days, older bars come from Bitstamp alone")
+    ap.add_argument("--allow-single-source", action="store_true",
+                    help="certify Kraken-only bars (flagged single_source) when no second venue answers")
     a = ap.parse_args()
     out = Path(a.out)
     now = datetime.now(timezone.utc)
@@ -64,13 +70,13 @@ def main() -> int:
             write(out, name, ds)
         return 0
     for base in a.pair or ["BTC"]:
-        since = end - 720 * H4
-        kr = src.fetch_kraken(KRAKEN_PAIRS[base], since, now)
-        usdt = {b.open_time: b.c for b in src.fetch_kraken("USDTUSD", since, now)}
-        bn = src.convert_quote(src.fetch_binance(f"{base}USDT", since, now), usdt)
-        by = src.convert_quote(src.fetch_bybit(f"{base}USDT", since, now), usdt)
-        ds = certify(f"kraken-spot:{base}/USD", {"kraken-spot": kr, "binance-spot": bn, "bybit-v5-spot": by},
-                     start=kr[0].open_time, end=end, eras=ERAS)
+        since = end - a.days * 6 * H4
+        per_source, skipped = src.venue_sources(base, KRAKEN_PAIRS[base], since, now)
+        for venue, why in skipped.items():
+            print(f"{base}: skipped {venue} ({why})", file=sys.stderr)
+        ds = certify(f"kraken-spot:{base}/USD", per_source,
+                     start=min(b[0].open_time for b in per_source.values() if b), end=end, eras=ERAS,
+                     single_venue=a.allow_single_source)
         write(out, f"{base}-USD", ds)
     return 0
 

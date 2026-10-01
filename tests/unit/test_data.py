@@ -124,6 +124,15 @@ def test_parse_binance_and_bybit_ordering():
         src.parse_bybit({"retCode": 10001, "retMsg": "bad"}, NOW)
 
 
+def test_parse_bitstamp_and_error():
+    rows = [{"timestamp": str(int((T0 + i * H4).timestamp())), "open": "1", "high": "2", "low": "0.5", "close": "1.5",
+             "volume": "3"} for i in reversed(range(4))]
+    out = src.parse_bitstamp({"data": {"pair": "BTC/USD", "ohlc": rows}}, NOW)
+    assert [b.open_time for b in out] == [T0, T0 + H4, T0 + 2 * H4] and out[0].v == 3.0
+    with pytest.raises(RuntimeError):
+        src.parse_bitstamp({"errors": [{"message": "bad"}]}, NOW)
+
+
 def test_fetch_binance_pages_with_injected_fetcher():
     def fake(url):
         start = int(url.split("startTime=")[1].split("&")[0])
