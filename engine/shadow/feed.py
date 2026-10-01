@@ -57,8 +57,12 @@ def load_history(path: Path) -> Series | None:
                   certified=True)
 
 
-def refresh(history_dir: Path, base: str, now: datetime, fetch: src.Fetch = src._http_json) -> int:
-    """Append newly certified bars for `base`/USD. Returns how many bars were added."""
+def refresh(history_dir: Path, base: str, now: datetime, fetch: src.Fetch = src._http_json,
+            allow_single_source: bool = False) -> int:
+    """Append newly certified bars for `base`/USD. Returns how many bars were added.
+
+    `allow_single_source` certifies a bar that only Kraken reported (stored with single_source=true) instead of
+    quarantining it; two reachable sources that disagree are still quarantined."""
     path = store_path(history_dir, base)
     log = AppendOnlyLog(path)
     have = {r["open_time"] for r in log.records()} if path.exists() else set()
@@ -67,7 +71,7 @@ def refresh(history_dir: Path, base: str, now: datetime, fetch: src.Fetch = src.
     per_source, skipped = src.venue_sources(base, KRAKEN_PAIRS[base], since, now, fetch=fetch)
     last_skipped.clear()
     last_skipped.update(skipped)
-    ds = certify(f"kraken-spot:{base}/USD", per_source, start=since, end=end)
+    ds = certify(f"kraken-spot:{base}/USD", per_source, start=since, end=end, single_venue=allow_single_source)
     added = 0
     for cb in ds.bars:
         b: Bar = cb.bar
@@ -75,9 +79,18 @@ def refresh(history_dir: Path, base: str, now: datetime, fetch: src.Fetch = src.
             continue
         log.append({"instrument_id": cb.instrument_id, "open_time": b.open_time.isoformat(), "o": b.o, "h": b.h,
                     "l": b.l, "c": b.c, "v": b.v, "sources": list(cb.sources), "era": cb.era,
-                    "dispersion": cb.dispersion, "certified": cb.certified, "content_hash": cb.content_hash})
+                    "dispersion": cb.dispersion, "certified": cb.certified, "single_source": cb.single_source,
+                    "content_hash": cb.content_hash})
         added += 1
     return added
+
+
+def single_source_at(path: Path, open_time: datetime) -> bool:
+    """True when the stored certified bar at `open_time` came from one venue only."""
+    if not Path(path).exists():
+        return False
+    t = open_time.isoformat()
+    return any(r.get("single_source") for r in AppendOnlyLog(Path(path)).records() if r.get("open_time") == t)
 
 
 def parse_kraken_depth(payload: dict, now: datetime, band: float = 0.005) -> Quote:

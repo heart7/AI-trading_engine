@@ -84,10 +84,10 @@ def cmd_run(a: argparse.Namespace) -> int:
         return 0
     frozen = recs[0]["policy_hash"] if recs else pol.hash
     bases = a.pair or ["BTC", "XRP", "ETH", "SOL"]
-    series, quotes = [], {}
+    series, quotes, notes = [], {}, []
     for base in bases:
         if not a.offline:
-            feed.refresh(Path(a.history), base, now)
+            feed.refresh(Path(a.history), base, now, allow_single_source=a.allow_single_source)
             for venue, why in feed.last_skipped.items():
                 print(f"{base}: skipped {venue} ({why})", file=sys.stderr)
         s = feed.load_history(feed.store_path(Path(a.history), base))
@@ -95,6 +95,9 @@ def cmd_run(a: argparse.Namespace) -> int:
             print(f"{base}: no certified history in {a.history}", file=sys.stderr)
             continue
         series.append(s)
+        if feed.single_source_at(feed.store_path(Path(a.history), base), feed.last_close(now) - H4):
+            notes.append({"code": "SINGLE_SOURCE", "severity": "D3", "instrument_id": s.instrument_id,
+                          "detail": "bar certified from Kraken alone (no second venue reachable)"})
         if not a.offline:
             try:
                 quotes[s.instrument_id] = feed.kraken_quote(base, now)
@@ -107,7 +110,7 @@ def cmd_run(a: argparse.Namespace) -> int:
     svc = AdmissibilityService(doc, frozen, blackout=load_blackout())
     runner = ShadowRunner(doc, frozen, journal, mu_q_daily=a.mu_q, admission=lambda k, t: svc.gate(base_of(k), t))
     rec = runner.cycle(series, bar_close=feed.last_close(now), now=now, loaded_policy_hash=pol.hash,
-                       rung=_rung(Path(a.ladder)), quotes=quotes)
+                       rung=_rung(Path(a.ladder)), quotes=quotes, data_incidents=notes)
     print(json.dumps({k: rec[k] for k in ("bar_close", "rung", "incidents")}, default=str))
     for row in rec["instruments"]:
         print(f"  {row['instrument_id']}: {row['outcome']} ({row.get('binding_gate') or 'enter'}) recon={row.get('recon_ok')}")
@@ -165,6 +168,8 @@ def main() -> int:
     r.add_argument("--mu-q", type=float, default=None, help="harness expectancy; omitted sizes every entry to zero")
     r.add_argument("--offline", action="store_true", help="use the stored history only (no fetch, no order book)")
     r.add_argument("--force", action="store_true")
+    r.add_argument("--allow-single-source", action="store_true",
+                   help="certify Kraken-only bars (flagged single_source, journalled as SINGLE_SOURCE D3) when no second venue answers")
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status")
     st.add_argument("--journal", default="runs/shadow/journal.jsonl")

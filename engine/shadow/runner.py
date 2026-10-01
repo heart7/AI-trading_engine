@@ -64,7 +64,7 @@ class ShadowJournal:
         return self.log.append(dict(rec))
 
     def records(self) -> list[dict[str, Any]]:
-        return self.log.records()
+        return self.log.records() if self.log.path.exists() else []  # a new journal has no cycles yet
 
     def verify(self) -> int:
         return self.log.verify()
@@ -106,14 +106,15 @@ class ShadowRunner:
     admission: Any = None  # admissibility service hook (universe, listings, blackout); None = not checked
 
     def cycle(self, series: Sequence[Series], *, bar_close: datetime, now: datetime, loaded_policy_hash: str,
-              rung: str, records: Iterable[StepRecord] = (), quotes: Mapping[str, Quote] | None = None) -> dict[str, Any]:
+              rung: str, records: Iterable[StepRecord] = (), quotes: Mapping[str, Quote] | None = None,
+              data_incidents: Sequence[dict[str, Any]] = ()) -> dict[str, Any]:
         from engine.modes.ladder import base_mode
 
         quotes = quotes or {}
         mode = base_mode(rung)
         rec: dict[str, Any] = {"bar_close": bar_close.isoformat(), "observed_at": now.isoformat(), "rung": rung,
                                "mode": mode, "policy_hash": self.policy_hash, "class": self.evidence_class,
-                               "instruments": [], "incidents": []}
+                               "instruments": [], "incidents": [dict(i) for i in data_incidents]}
         if loaded_policy_hash != self.policy_hash:
             rec["incidents"].append({"code": "PARAMS_NOT_FROZEN", "severity": "H1",
                                      "detail": "policy changed during SHADOW without a new signed policy"})

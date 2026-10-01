@@ -398,6 +398,31 @@ def test_refresh_with_kraken_alone_certifies_nothing(tmp_path):
     assert len(feed.last_skipped) == 3 and feed.load_history(feed.store_path(tmp_path, "BTC")) is None
 
 
+def test_kraken_only_certifies_when_allowed_and_flags_single_source(tmp_path):
+    import urllib.error
+    now = datetime(2026, 9, 28, 12, 7, tzinfo=timezone.utc)
+    inner = _fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 60, now)
+
+    def fetch(url):
+        if "kraken" not in url:
+            raise urllib.error.URLError("proxy denied")
+        return inner(url)
+    assert feed.refresh(tmp_path, "BTC", now, fetch=fetch, allow_single_source=True) == 30
+    path = feed.store_path(tmp_path, "BTC")
+    assert feed.load_history(path).certified
+    assert feed.single_source_at(path, datetime(2026, 9, 28, 8, tzinfo=timezone.utc))
+    # once a second venue answers, new bars carry two sources and lose the flag
+    later = now + 4 * H4
+    feed.refresh(tmp_path, "BTC", later, fetch=_fake_exchange(datetime(2026, 9, 20, tzinfo=timezone.utc), 70, later),
+                 allow_single_source=True)
+    assert not feed.single_source_at(path, datetime(2026, 9, 29, tzinfo=timezone.utc))
+
+
+def test_new_journal_reads_as_empty(tmp_path):
+    from engine.shadow.runner import ShadowJournal
+    assert ShadowJournal(tmp_path / "none.jsonl").records() == []
+
+
 def test_load_history_keeps_the_newest_contiguous_run(tmp_path):
     from engine.data.store import AppendOnlyLog
     log = AppendOnlyLog(tmp_path / "X-USD.bars.jsonl")

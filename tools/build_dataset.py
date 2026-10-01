@@ -35,7 +35,8 @@ def write(out: Path, name: str, ds) -> None:
         b = cb.bar
         log.append({"instrument_id": cb.instrument_id, "open_time": b.open_time.isoformat(), "o": b.o, "h": b.h,
                     "l": b.l, "c": b.c, "v": b.v, "sources": list(cb.sources), "era": cb.era,
-                    "dispersion": cb.dispersion, "certified": cb.certified, "content_hash": cb.content_hash})
+                    "dispersion": cb.dispersion, "certified": cb.certified, "single_source": cb.single_source,
+                    "content_hash": cb.content_hash})
     (out / f"{name}.quality.json").write_text(json.dumps(ds.report.as_dict(), indent=2) + "\n")
     r = ds.report
     print(f"{name}: {r.certified_bars}/{r.expected_bars} bars ({r.coverage:.2%}), gaps={len(r.gaps)}, "
@@ -50,6 +51,8 @@ def main() -> int:
     ap.add_argument("--pair", action="append")
     ap.add_argument("--years", type=float, default=9.0)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--allow-single-source", action="store_true",
+                    help="certify Kraken-only bars (flagged single_source) when no second venue answers")
     a = ap.parse_args()
     out = Path(a.out)
     now = datetime.now(timezone.utc)
@@ -69,7 +72,8 @@ def main() -> int:
         for venue, why in skipped.items():
             print(f"{base}: skipped {venue} ({why})", file=sys.stderr)
         ds = certify(f"kraken-spot:{base}/USD", per_source,
-                     start=per_source["kraken-spot"][0].open_time, end=end, eras=ERAS)
+                     start=per_source["kraken-spot"][0].open_time, end=end, eras=ERAS,
+                     single_venue=a.allow_single_source)
         write(out, f"{base}-USD", ds)
     return 0
 
