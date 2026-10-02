@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Operator CLI for governance tasks that need the principal's hardware key.
+"""Operator CLI for governance tasks that need the principal's approval key.
 
-  enroll     add a hardware public key (primary or backup) to policy/signers/signers.json
+  enroll     add an approval key to policy/signers/signers.json: a passkey record from docs/passkey/index.html
+             (JSON) or a FIDO2 hardware key's OpenSSH .pub line
   statement  write the exact bytes to sign for an approval
   attach     combine a statement and its ssh-keygen signature into an approval record
   verify     verify an approval record against the enrolled keys
@@ -11,8 +12,9 @@
   stress     run the stress battery (§7.8) on a policy and write its run record
   drill      run the P3.5 drills: kill verifier -> entries block; attribution to the penny on replay
 
-Signing happens on the principal's own machine with the standard OpenSSH tool, which
-requires a touch on the key:
+The default is a passkey on the principal's phone or laptop: the approval page (docs/passkey/index.html, served
+over HTTPS) creates it and signs approval statements after Face ID, Touch ID, Windows Hello or the device PIN. Its
+output is a complete approval record. A FIDO2 hardware key also works, through the standard OpenSSH tool:
 
   ssh-keygen -t ed25519-sk -O verify-required -C "uchfe-primary"   # once per key
   python3 tools/uchfe.py statement --action POLICY_ACTIVATE --policy policy/policy-10.4.0.yaml \\
@@ -38,6 +40,8 @@ from engine.policy.loader import load_policy  # noqa: E402
 
 def cmd_enroll(a: argparse.Namespace) -> int:
     line = Path(a.pubkey).read_text().strip()
+    if line.startswith("{"):
+        return _enroll_passkey(a, json.loads(line))
     pk = sshsig.parse_public_key_line(line)
     if not pk.hardware_backed:
         print("refused: only hardware (sk-) keys may be enrolled for approvals", file=sys.stderr)
@@ -55,6 +59,28 @@ def cmd_enroll(a: argparse.Namespace) -> int:
     return 0
 
 
+def _enroll_passkey(a: argparse.Namespace, rec: dict) -> int:
+    from engine.governance import webauthn
+
+    try:
+        cred = webauthn.PasskeyCredential.from_doc(rec)
+    except (KeyError, ValueError) as e:
+        print(f"refused: not a valid passkey record ({e})", file=sys.stderr)
+        return 2
+    doc = json.loads(ap.SIGNERS_FILE.read_text())
+    signer = next(s for s in doc["signers"] if s["signer_id"] == a.signer)
+    if any(k["key_id"] == a.key_id or k.get("credential_id") == cred.credential_id for k in signer["keys"]):
+        print(f"refused: key_id {a.key_id} or this passkey is already enrolled", file=sys.stderr)
+        return 2
+    signer["keys"].append({"key_id": a.key_id, "type": "passkey", "credential_id": cred.credential_id,
+                           "public_key_spki": rec["public_key_spki"], "alg": cred.alg, "rp_id": cred.rp_id,
+                           "origin": cred.origin, "status": "ACTIVE", "fingerprint": cred.fingerprint,
+                           "enrolled_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    ap.SIGNERS_FILE.write_text(json.dumps(doc, indent=2) + "\n")
+    print(f"enrolled passkey {a.key_id} {cred.fingerprint} for {cred.origin}")
+    return 0
+
+
 def _subject(a: argparse.Namespace) -> str:
     if a.policy:
         return load_policy(a.policy).hash
@@ -67,7 +93,8 @@ def cmd_statement(a: argparse.Namespace) -> int:
     stmt = ap.statement(a.action, _subject(a), a.signer, a.rationale,
                         datetime.now(timezone.utc).isoformat(timespec="seconds"))
     Path(a.output).write_bytes(ap.statement_bytes(stmt))
-    print(f"wrote {a.output}; sign it with: ssh-keygen -Y sign -f <sk key> -n {ap.NAMESPACE} {a.output}")
+    print(f"wrote {a.output}; sign it on the approval page (passkey), or with: "
+          f"ssh-keygen -Y sign -f <sk key> -n {ap.NAMESPACE} {a.output}")
     return 0
 
 

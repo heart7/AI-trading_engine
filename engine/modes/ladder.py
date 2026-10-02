@@ -3,7 +3,7 @@
     PAPER -> SHADOW (>= 90 d) -> CANARY (<= 5% of tier capital, >= 60 d) -> LIVE 25% -> 50% -> 100% (>= 30 d each)
 
 Rules enforced here:
-- Promotion is one step at a time and needs a verified hardware-signed PROMOTE approval for this exact move.
+- Promotion is one step at a time and needs a verified passkey-signed PROMOTE approval for this exact move.
 - PAPER -> SHADOW needs §9.3 steps 1-5, 7, 8 PASS. Step 6 is never required (INV-29).
 - Every later promotion needs the current step's record: dwell met, recon >= recon_min, cost divergence below
   divergence_block, zero H1/D1 incidents in the step, and OBSERVED evidence. A FIXTURE record never promotes.
@@ -130,7 +130,7 @@ class ModeLadder:
             if failed:
                 raise ModeRefused("STEP_GATES_FAIL", "; ".join(f"{g['gate']} ({g['detail']})" for g in failed))
         if approval is None:
-            raise ModeRefused("APPROVAL_REQUIRED", "a hardware-signed PROMOTE approval for this move")
+            raise ModeRefused("APPROVAL_REQUIRED", "a passkey-signed PROMOTE approval for this move")
         verify(approval, promotion_subject(self.rung, to, self.policy_hash, evidence))
         return self._move(to, on, "promoted with signed approval")
 

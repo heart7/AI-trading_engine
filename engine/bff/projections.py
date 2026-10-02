@@ -564,9 +564,9 @@ def risk(s: PaperSession) -> dict[str, Any]:
         "flatten_preview": {"time_to_flatten_min": F(s, "ttf", "Time to flatten", ttf, "ESTIMATED", interval=(ttf, ttf * 3.0),
                                                      digits=1, extra={"basis": "A-STRESS-BOOK: 10% participation, 0.3 stress depth"}),
                             "ceiling_min": rk["ttf_ceiling_min"]["A"]},
-        "kill_switches": [{"switch": k, "scope": "engine", "armed": True, "control": "Governance (hardware-key approval)"}
+        "kill_switches": [{"switch": k, "scope": "engine", "armed": True, "control": "Governance (passkey approval)"}
                           for k in ("STOP", "SUSPEND", "FLATTEN")],
-        "rearm_rule": "Re-arm needs a hardware-key approval and a written rationale; no control here raises a limit.",
+        "rearm_rule": "Re-arm needs a passkey approval and a written rationale; no control here raises a limit.",
         "fixture": True}
 
 
@@ -635,7 +635,7 @@ def fund_room(s: PaperSession) -> dict[str, Any]:
     dd_row = ladder[-1]
     return {
         "tier_banner": {"tier": tier, "name": TIER_NAMES[tier], "text": f"Paper session simulating {tier} {TIER_NAMES[tier]} rules. "
-                        "The fund is at T0 until a tier is approved with the hardware key.",
+                        "The fund is at T0 until a tier is approved with your passkey.",
                         "micro_notice": MICRO_NOTICE if tier == "T1" else None},
         "mode": "PAPER", "engine_state": "RUNNING",
         "nav": nav_fig, "hwm": F(s, "hwm", "High-water mark", st["hwm"], "DERIVED", unit="USD", **obs),
@@ -655,7 +655,7 @@ def fund_room(s: PaperSession) -> dict[str, Any]:
                   "cash": F(s, "pulse-cash", "Cash", 1 - gross / nav, "DERIVED", unit="%", digits=1, **obs),
                   "cost_gate_passes": F(s, "pulse-cg", "Cost-gate passes", sum(1 for x in s.series if (cost_r(s, x.instrument_id, s.last_index()) or 9)
                                                                               <= s.policy["cost"]["cost_R_max"]), "DERIVED", **obs)},
-        "start_stop": {"control": "Governance", "text": "START/STOP is a kill switch: it needs a hardware-key approval in Governance."},
+        "start_stop": {"control": "Governance", "text": "START/STOP is a kill switch: it needs a passkey approval in Governance."},
         "fixture": True}
 
 
@@ -1122,7 +1122,7 @@ def governance(s: PaperSession) -> dict[str, Any]:
     assumed = yaml.safe_load((ROOT / "policy" / "assumed_register.yaml").read_text())["assumed"]
     from research.registry.registry import load
     return {"policy": {"version": s.policy_version, "hash": s.policy_hash, "active": False,
-                       "status": "not activated: no enrolled hardware key has signed it"},
+                       "status": "not activated: no enrolled passkey has signed it"},
             "signers": [{"signer_id": x["signer_id"], "keys_enrolled": len(x["keys"])} for x in signers["signers"]],
             "proposals": [], "approvals": [], "tier_requests": [], "access_records": [],
             "assumed": [F(s, a["id"], a["id"], a["value"], "ASSUMED", owner=a["owner"], review_by=a["review_by"], fixture=False,
@@ -1155,7 +1155,7 @@ def exchanges(s: PaperSession) -> dict[str, Any]:
 
 
 def settings(s: PaperSession) -> dict[str, Any]:
-    return {"profile": {"principal": "principal", "mfa": "hardware key (not yet enrolled)", "sessions": []},
+    return {"profile": {"principal": "principal", "mfa": "passkey (not yet enrolled)", "sessions": []},
             "notifications": [{"class": "S1", "route": "push + SMS, dead-man"}, {"class": "D2", "route": "push"},
                               {"class": "H1", "route": "email"}, {"class": "info", "route": "in-app"}],
             "display": {"time": "UTC primary", "currency": "USD (fixed)", "themes": ["light", "dark"], "density": ["comfortable", "compact"]},

@@ -77,7 +77,7 @@ def test_cooling_off_honoured_when_raised():
 
 def test_no_signers_enrolled_in_repo_yet():
     reg = ap.SignerRegistry.load()
-    assert reg.enrolled_hardware_keys("principal") == []
+    assert reg.enrolled_approval_keys("principal") == []
 
 
 def test_software_key_cannot_be_enrolled_as_hardware():

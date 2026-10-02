@@ -1,7 +1,7 @@
 """Profit allocation (spec §12.6, §8.4).
 
 The reinvest percentage (0-100%) is a policy setting. Changing it is a proposal that takes effect only with a
-hardware-signed PROFIT_ALLOCATION approval over the exact change. Sweeping profit off-venue is a transfer_intent
+passkey-signed PROFIT_ALLOCATION approval over the exact change. Sweeping profit off-venue is a transfer_intent
 that a human executes with keys the engine never holds (INV-02); the engine only proposes the amount.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ def propose(current_pct: float, proposed_pct: float, policy_hash: str) -> Alloca
 def apply(p: AllocationProposal, approval: Mapping[str, str] | None, verify: Callable[[Mapping[str, str], str], Any]) -> float:
     """Returns the new reinvest percentage once the approval verifies (verify raises on refusal)."""
     if approval is None:
-        raise AllocationRefused("APPROVAL_REQUIRED", "a hardware-signed PROFIT_ALLOCATION approval")
+        raise AllocationRefused("APPROVAL_REQUIRED", "a passkey-signed PROFIT_ALLOCATION approval")
     verify(approval, p.subject_hash)
     return p.proposed_pct
 
