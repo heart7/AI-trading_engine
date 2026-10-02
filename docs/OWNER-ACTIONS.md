@@ -2,29 +2,24 @@
 
 The P0 gate (spec §19) needs three things only the principal can do. Everything else in P0 is built and tested.
 
-## 1. Enrol two hardware keys (primary + backup)
-Any FIDO2 key that OpenSSH supports (YubiKey 5 series, SoloKey, Nitrokey 3). On your own computer, once per key:
+## 1. Create two passkeys (main + backup)
+No USB key is needed (decision 0009). Open the approval page on your phone or laptop:
+https://heart7.github.io/AI-trading_engine/passkey/
 
-```
-ssh-keygen -t ed25519-sk -O verify-required -C "uchfe-primary" -f ~/.ssh/uchfe_primary
-ssh-keygen -t ed25519-sk -O verify-required -C "uchfe-backup"  -f ~/.ssh/uchfe_backup
-```
-(Older keys without ed25519 support: use `-t ecdsa-sk`.) Then in the repo:
-```
-python3 tools/uchfe.py enroll ~/.ssh/uchfe_primary.pub --key-id primary
-python3 tools/uchfe.py enroll ~/.ssh/uchfe_backup.pub  --key-id backup
-```
-Only public keys are stored. Software keys are refused. Keep the backup key somewhere separate.
+Under "Create a passkey", give it a name (for example `phone`) and press the button. Your device asks for Face ID,
+Touch ID, Windows Hello or its PIN. The page then shows one line of text, which is only the public part of the
+passkey: paste it into the project thread and Claude enrols it. Do the same on a second device (for example
+`laptop`) as the backup. If your passkeys sync through iCloud Keychain or Google Password Manager, make sure that
+account has its own strong sign-in, because it now protects your approvals.
+
+A FIDO2 USB or NFC key still works if you ever want one: `ssh-keygen -t ed25519-sk -O verify-required`, then send
+the `.pub` line instead.
 
 ## 2. Sign policy v10.4.0 for PAPER
-```
-python3 tools/uchfe.py statement --action POLICY_ACTIVATE --policy policy/policy-10.4.0.yaml \
-    --rationale "Activate v10.4.0 for PAPER mode (P0)" -o stmt.json
-ssh-keygen -Y sign -f ~/.ssh/uchfe_primary -n uchfe-approval@v1 stmt.json     # touch the key
-python3 tools/uchfe.py attach stmt.json stmt.json.sig -o policy/approvals/10.4.0-paper.json
-python3 tools/uchfe.py activate --mode PAPER policy/approvals/10.4.0-paper.json
-```
-The signature covers the policy hash and your written reason, so neither can be changed afterwards.
+Claude sends you an approval request: a short block of text naming the action, the policy hash and a one-line
+reason (yours, or one you agree with). Paste it under "Sign an approval" on the same page, check the details it
+shows, and press "Check and sign". Approve with Face ID, Touch ID, Windows Hello or the PIN, then paste the result
+back into the thread. The signature covers the policy hash and your reason, so neither can be changed afterwards.
 
 ## 3. Answer the P0 open items (spec §21)
 - Item 1: universe beyond BTC and XRP (ETH and SOL are the defaults; the spec suggests making ETH mandatory).
@@ -38,9 +33,10 @@ Nothing here is needed for PAPER mode. None of it should be pasted into the chat
 - When a testnet run is wanted: create **read-only** and **trade-only** demo/testnet keys (never with withdrawal permission). They go into the secret store from Settings, not into this repo or the chat.
 - Binance and Bybit stay data-only unless each confirms in writing that a UK resident may trade on the account (INV-43).
 
-## 5. Start the live-data record (P6), when you want to
-Uses public market data only: no account, no API key, no orders. Run it on your own computer, which can reach the
-exchanges (this build's container cannot).
+## 5. Live-data record (P6): running
+Since 2026-10-01 the record runs in the cloud every 4 hours on public Kraken and Bitstamp prices (no account, no API
+key, no orders), with its journal in the project's shared `shadow` folder. Nothing to do. The commands below are
+only for running it on your own computer as well.
 ```
 python3 tools/build_dataset.py --live --pair BTC --pair XRP --pair ETH --pair SOL --out data/live
 python3 tools/shadow.py run --history data/live --journal runs/shadow/journal.jsonl
@@ -62,8 +58,8 @@ scenario stays inside the 20% drawdown budget. It passes the stress battery. It 
 ```
 python3 tools/uchfe.py statement --action POLICY_ACTIVATE --policy policy/proposals/policy-10.4.1-venue-cap.yaml \
     --rationale "Lower venue cap to 20% until a second UK venue exists (decision 0004)" -o stmt.json
-ssh-keygen -Y sign -f ~/.ssh/uchfe_primary -n uchfe-approval@v1 stmt.json
 ```
+Then sign it on the approval page as in step 2.
 
 ## 7. Before CANARY (P7), nothing needed yet
 `python3 tools/golive.py` lists every go-live item and who owns it. The ones only you (or your accountant) can do:
