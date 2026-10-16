@@ -1,6 +1,35 @@
 {
-  "note": "Enrolled approval keys (spec §0.4, §17). Only public keys live here. Enrol with tools/uchfe.py enroll. A passkey (phone or laptop) or FIDO2 hardware key, plus a backup on a second device, are required before the P0 exit gate.",
+  "note": "Enrolled approval keys (spec \u00a70.4, \u00a717). Only public keys live here. Enrol with tools/uchfe.py enroll. A passkey (phone or laptop) or FIDO2 hardware key, plus a backup on a second device, are required before the P0 exit gate.",
   "signers": [
-    {"signer_id": "principal", "role": "principal", "keys": []}
+    {
+      "signer_id": "principal",
+      "role": "principal",
+      "keys": [
+        {
+          "key_id": "laptop",
+          "type": "passkey",
+          "credential_id": "XtpDs3-_KSiUN2mZAaCKq-coFZmYS_zDl6wrBhYL9QI",
+          "public_key_spki": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA107gzs4iHcwm4fTWAvtQOY/B0CKkUc9sdVAg/ar69NpqpKIgXUMCzIBjzqi1cYWXqOScDnVTfUTkWXWebjrcOBZN+tuTa6VgXOIve1dzAw/FT1eEQQ0KamnRhA7PXeFIO1yl7kZ1RJfeNe+zKP8yFVAD2zOfCZCk1TXxAwATUQn8k5YufKBZ3h5tVouX8k+3b+oreD0pYH8B7rxAhuNRwrSfKUeML/5KpPaUh6JTnL0ZwjWxAZtCElZ2Q7F9NDv3+cvWUKz0OXs2/+qml7SQ1DmGWm/soDylNMYtxMaSlRkS6+K16ZSNC24YYjHccADq+KJhLRdYloo3i/NthJi1+QIDAQAB",
+          "alg": -257,
+          "rp_id": "heart7.github.io",
+          "origin": "https://heart7.github.io",
+          "status": "ACTIVE",
+          "fingerprint": "SHA256:xl+kcFvjdF3/qujI0YihorssFpRTXVrXineSVjdtFdc",
+          "enrolled_at": "2026-10-16T19:52:00+00:00"
+        },
+        {
+          "key_id": "phone",
+          "type": "passkey",
+          "credential_id": "9f62IUI2pCBbknGj8v93a5UEAKA",
+          "public_key_spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErQQzn7MGNSMTWXOktSrunOcbbX5TpHXy/jhhkQurm3YkTCSp5RV6cI8oz2jH/b5FRSRbnxaB6bH70N6U+roYsg==",
+          "alg": -7,
+          "rp_id": "heart7.github.io",
+          "origin": "https://heart7.github.io",
+          "status": "ACTIVE",
+          "fingerprint": "SHA256:4F8PZLqIyKrWXIAzMNHvEvTo0hfkki8E8LlssQdoUxA",
+          "enrolled_at": "2026-10-16T19:54:58+00:00"
+        }
+      ]
+    }
   ]
 }

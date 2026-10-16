@@ -75,9 +75,13 @@ def test_cooling_off_honoured_when_raised():
     assert va.effective_at == NOW + timedelta(hours=24)
 
 
-def test_no_signers_enrolled_in_repo_yet():
-    reg = ap.SignerRegistry.load()
-    assert reg.enrolled_approval_keys("principal") == []
+def test_repo_signers_are_principal_passkeys_with_backup():
+    keys = ap.SignerRegistry.load().enrolled_approval_keys("principal")
+    assert {k.key_id for k in keys} == {"phone", "laptop"}
+    for k in keys:
+        assert k.passkey is not None
+        assert k.passkey.rp_id == "heart7.github.io"
+        assert k.passkey.origin == "https://heart7.github.io"
 
 
 def test_software_key_cannot_be_enrolled_as_hardware():
