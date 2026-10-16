@@ -1,8 +1,9 @@
 """Single-signer approvals and policy activation (spec §0.4, INV-33, INV-34).
 
 An approval is a statement {action, subject_hash, signer_id, rationale, signed_at, namespace}
-serialised canonically and signed by an enrolled hardware key. The rationale is inside the
-signed bytes, so it cannot be edited after signing. Approvals take effect on signing
+serialised canonically and signed by an enrolled approval key: a passkey on the principal's phone or laptop
+(WebAuthn, unlocked with a biometric or device PIN) or a FIDO2 hardware key (OpenSSH `sk-`). Every approval needs a
+fresh user-verified signature. The rationale is inside the signed bytes, so it cannot be edited after signing. Approvals take effect on signing
 (`cooling_off_hours: 0`); the field is honoured if it is ever raised.
 """
 from __future__ import annotations
@@ -16,7 +17,7 @@ from typing import Any
 
 from engine.common.canonical import canonical_json
 from engine.common.schemas import SchemaError, validate
-from engine.governance import sshsig
+from engine.governance import sshsig, webauthn
 from engine.policy.coherence import CoherenceResult, EvidenceContext, check_policy
 from engine.policy.loader import Policy
 
@@ -34,8 +35,17 @@ class ApprovalRefused(Exception):
 @dataclass(frozen=True)
 class EnrolledKey:
     key_id: str
-    public_key: sshsig.PublicKey
+    public_key: sshsig.PublicKey | None  # OpenSSH key; None for a passkey
     status: str  # ACTIVE | REVOKED
+    passkey: webauthn.PasskeyCredential | None = None
+
+    @property
+    def approval_capable(self) -> bool:
+        return self.passkey is not None or (self.public_key is not None and self.public_key.hardware_backed)
+
+    @property
+    def fingerprint(self) -> str:
+        return self.passkey.fingerprint if self.passkey else self.public_key.fingerprint  # type: ignore[union-attr]
 
 
 @dataclass(frozen=True)
@@ -53,8 +63,7 @@ class SignerRegistry:
     def from_doc(cls, doc: Mapping[str, Any]) -> SignerRegistry:
         out: dict[str, Signer] = {}
         for s in doc.get("signers", []):
-            keys = tuple(EnrolledKey(k["key_id"], sshsig.parse_public_key_line(k["public_key"]), k.get("status", "ACTIVE"))
-                         for k in s.get("keys", []))
+            keys = tuple(_enrolled(k) for k in s.get("keys", []))
             out[s["signer_id"]] = Signer(s["signer_id"], s.get("role", "principal"), keys)
         return cls(out)
 
@@ -62,9 +71,16 @@ class SignerRegistry:
     def load(cls, path: Path = SIGNERS_FILE) -> SignerRegistry:
         return cls.from_doc(json.loads(path.read_text()))
 
-    def enrolled_hardware_keys(self, signer_id: str) -> list[EnrolledKey]:
+    def enrolled_approval_keys(self, signer_id: str) -> list[EnrolledKey]:
         s = self.signers.get(signer_id)
-        return [k for k in (s.keys if s else ()) if k.status == "ACTIVE" and k.public_key.hardware_backed]
+        return [k for k in (s.keys if s else ()) if k.status == "ACTIVE" and k.approval_capable]
+
+
+def _enrolled(k: Mapping[str, Any]) -> EnrolledKey:
+    status = k.get("status", "ACTIVE")
+    if k.get("type") == "passkey":
+        return EnrolledKey(k["key_id"], None, status, webauthn.PasskeyCredential.from_doc(k))
+    return EnrolledKey(k["key_id"], sshsig.parse_public_key_line(k["public_key"]), status)
 
 
 @dataclass
@@ -117,27 +133,48 @@ def verify_approval(approval: Mapping[str, str], registry: SignerRegistry, *, ex
     if approval["subject_hash"] != expected_subject:
         raise ApprovalRefused("WRONG_SUBJECT", "approval was signed for a different object")
 
-    keys = registry.enrolled_hardware_keys(approval["signer_id"])
+    keys = registry.enrolled_approval_keys(approval["signer_id"])
     if not keys:
-        raise ApprovalRefused("SIGNER_NOT_ENROLLED", f"no active hardware key for {approval['signer_id']}")
+        raise ApprovalRefused("SIGNER_NOT_ENROLLED", f"no active approval key for {approval['signer_id']}")
 
     msg = statement_bytes({k: approval[k] for k in ("action", "subject_hash", "signer_id", "rationale", "signed_at", "namespace")})
+    if webauthn.is_passkey_signature(approval["signature"]):
+        return _verify_passkey(approval, msg, keys, cooling_off_hours, counters)
     try:
         vs = sshsig.verify(approval["signature"], msg, NAMESPACE)
     except sshsig.SignatureInvalid as e:
         raise ApprovalRefused("SIGNATURE_INVALID", str(e)) from e
     if not vs.public_key.hardware_backed:
         raise ApprovalRefused("REAUTH_REQUIRED", "signature is not from a hardware (sk-) key")
-    match = [k for k in keys if k.public_key.blob == vs.public_key.blob]
+    match = [k for k in keys if k.public_key is not None and k.public_key.blob == vs.public_key.blob]
     if not match:
         raise ApprovalRefused("SIGNER_KEY_MISMATCH", "signing key is not enrolled for this signer")
     if not vs.user_present:
         raise ApprovalRefused("REAUTH_REQUIRED", "authenticator did not report a user-presence touch")
     (counters or CounterStore()).check_and_record(vs.public_key.fingerprint, vs.counter)
 
-    signed_at = datetime.fromisoformat(approval["signed_at"].replace("Z", "+00:00"))
     return VerifiedApproval(approval, match[0].key_id, vs.public_key.fingerprint, vs.user_verified,
-                            signed_at + timedelta(hours=cooling_off_hours))
+                            _effective(approval, cooling_off_hours))
+
+
+def _effective(approval: Mapping[str, str], cooling_off_hours: float) -> datetime:
+    signed_at = datetime.fromisoformat(approval["signed_at"].replace("Z", "+00:00"))
+    return signed_at + timedelta(hours=cooling_off_hours)
+
+
+def _verify_passkey(approval: Mapping[str, str], msg: bytes, keys: list[EnrolledKey], cooling_off_hours: float,
+                    counters: CounterStore | None) -> VerifiedApproval:
+    creds = {k.passkey.credential_id: k.passkey for k in keys if k.passkey is not None}
+    try:
+        va = webauthn.verify(approval["signature"], msg, creds)
+    except webauthn.AssertionInvalid as e:
+        reason = "SIGNER_KEY_MISMATCH" if "not enrolled" in str(e) else "SIGNATURE_INVALID"
+        raise ApprovalRefused(reason, str(e)) from e
+    if not va.user_present or not va.user_verified:
+        raise ApprovalRefused("REAUTH_REQUIRED", "passkey did not report a fresh biometric or device-PIN check")
+    key = next(k for k in keys if k.passkey is va.credential)
+    (counters or CounterStore()).check_and_record(va.credential.fingerprint, va.counter)
+    return VerifiedApproval(approval, key.key_id, va.credential.fingerprint, True, _effective(approval, cooling_off_hours))
 
 
 @dataclass(frozen=True)

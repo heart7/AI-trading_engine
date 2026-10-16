@@ -152,7 +152,7 @@ def template_drafter(question: str, bundle: Mapping[str, Any]) -> tuple[str, lis
         lines.append(f"Open incidents: {len(bundle['incidents'])}.")
     if "tier" in question.lower() or re.search(r"\bt[0-4]\b", question.lower()):
         lines.append("Tiers change only through Governance → Tier requests: an upgrade needs every gate to pass and a signed "
-                     "hardware-key approval. The reporter cannot request or change a tier.")
+                     "passkey approval. The reporter cannot request or change a tier.")
     return " ".join(lines), cites
 
 
@@ -162,7 +162,7 @@ def ask(s: PaperSession, question: str, *, drafter: Callable[[str, Mapping[str, 
     qid = "rp-" + content_hash([question, now.isoformat()])[:16]
     if is_execute(question):
         text = ("I can only inform. I cannot place, change or approve anything. Orders come from the engine's own gates, "
-                "limits and tiers change only through a Governance proposal signed with the hardware key, and verdicts come "
+                "limits and tiers change only through a Governance proposal signed with your passkey, and verdicts come "
                 "only from harness run records. To request a tier, open Governance → Tier requests.")
         out = {"id": qid, "question": question, "answer": text, "citations": [], "refused": True, "refusal": "EXECUTE_REQUEST",
                "class": "REPORTED", "exportable_as_evidence": False, "stripped": []}

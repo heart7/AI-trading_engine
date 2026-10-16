@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UCHFE approvals</title>
+<style>
+  :root { --bg:#fbfaf7; --fg:#1d1d1b; --muted:#5f5e58; --line:#d9d6cc; --accent:#1f5f8b; --ok:#2e6b3a; --bad:#9b2c2c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --fg:#ecebe6; --muted:#a3a198; --line:#3a3934; --accent:#7fb3d9; --ok:#7cc48a; --bad:#e08a8a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.4rem; margin:0 0 4px; } h2 { font-size:1.1rem; margin:28px 0 8px; }
+  p.lead, .muted { color:var(--muted); }
+  section { border-top:1px solid var(--line); padding-top:8px; }
+  label { display:block; font-weight:600; margin:12px 0 4px; }
+  input, textarea { width:100%; font:14px ui-monospace, Menlo, Consolas, monospace; padding:8px; border:1px solid var(--line); border-radius:6px; background:transparent; color:var(--fg); }
+  textarea { min-height:110px; }
+  button { margin-top:12px; padding:10px 16px; font:inherit; font-weight:600; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  .out { margin-top:12px; }
+  .msg { margin-top:8px; font-weight:600; } .ok { color:var(--ok); } .bad { color:var(--bad); }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 12px; margin:12px 0 0; } dt { color:var(--muted); } dd { margin:0; overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>UCHFE approvals</h1>
+  <p class="lead">Approve engine changes with a passkey on this phone or laptop (Face ID, Touch ID, Windows Hello or the
+    device PIN). Nothing secret leaves this device: the page only shows a public key and signatures for you to paste back.</p>
+
+  <section>
+    <h2>1. Create a passkey (once per device)</h2>
+    <label for="kid">Name for this passkey</label>
+    <input id="kid" value="phone" autocomplete="off">
+    <button id="create">Create passkey</button>
+    <div class="msg" id="createMsg"></div>
+    <div class="out" id="createOut" hidden>
+      <label for="enrol">Paste this back in the project thread</label>
+      <textarea id="enrol" readonly></textarea>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Sign an approval</h2>
+    <label for="stmt">Approval request (paste exactly as sent to you)</label>
+    <textarea id="stmt" placeholder='{"action":"POLICY_ACTIVATE",...}'></textarea>
+    <dl id="summary" hidden></dl>
+    <button id="sign">Check and sign</button>
+    <div class="msg" id="signMsg"></div>
+    <div class="out" id="signOut" hidden>
+      <label for="approval">Paste this back in the project thread</label>
+      <textarea id="approval" readonly></textarea>
+    </div>
+  </section>
+</main>
+<script>
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const enc = new TextEncoder();
+const say = (id, text, ok) => { const el = document.getElementById(id); el.textContent = text; el.className = "msg " + (ok ? "ok" : "bad"); };
+
+document.getElementById("create").onclick = async () => {
+  try {
+    const keyId = document.getElementById("kid").value.trim() || "passkey";
+    const cred = await navigator.credentials.create({ publicKey: {
+      rp: { id: location.hostname, name: "UCHFE approvals" },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: "principal", displayName: "UCHFE principal" },
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
+      attestation: "none", timeout: 120000 } });
+    const spki = cred.response.getPublicKey && cred.response.getPublicKey();
+    if (!spki) throw new Error("this browser cannot export the public key; try current Safari, Chrome or Edge");
+    const rec = { key_id: keyId, type: "passkey", credential_id: b64url(cred.rawId), public_key_spki: b64(spki),
+                  alg: cred.response.getPublicKeyAlgorithm(), rp_id: location.hostname, origin: location.origin };
+    document.getElementById("enrol").value = JSON.stringify(rec);
+    document.getElementById("createOut").hidden = false;
+    say("createMsg", "Passkey created. Only its public part is shown below.", true);
+  } catch (e) { say("createMsg", "Not created: " + e.message, false); }
+};
+
+const canonical = v => Array.isArray(v) ? "[" + v.map(canonical).join(",") + "]"
+  : (v && typeof v === "object") ? "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + canonical(v[k])).join(",") + "}"
+  : JSON.stringify(v);
+
+document.getElementById("sign").onclick = async () => {
+  try {
+    const stmt = JSON.parse(document.getElementById("stmt").value);
+    const need = ["action", "subject_hash", "signer_id", "rationale", "signed_at", "namespace"];
+    for (const k of need) if (typeof stmt[k] !== "string") throw new Error("request is missing " + k);
+    if (stmt.namespace !== "uchfe-approval@v1") throw new Error("not a UCHFE approval request");
+    const s = Object.fromEntries(need.map(k => [k, stmt[k]]));
+    const dl = document.getElementById("summary");
+    dl.innerHTML = "";
+    for (const [k, label] of [["action", "Action"], ["subject_hash", "Applies to"], ["rationale", "Your reason"], ["signed_at", "Time"]]) {
+      const dt = document.createElement("dt"); dt.textContent = label;
+      const dd = document.createElement("dd"); dd.textContent = s[k];
+      dl.append(dt, dd);
+    }
+    dl.hidden = false;
+    const challenge = await crypto.subtle.digest("SHA-256", enc.encode(canonical(s)));
+    const a = await navigator.credentials.get({ publicKey: { challenge, rpId: location.hostname,
+                                                             userVerification: "required", timeout: 120000 } });
+    const sig = { type: "passkey", credential_id: b64url(a.rawId), authenticator_data: b64url(a.response.authenticatorData),
+                  client_data_json: b64url(a.response.clientDataJSON), signature: b64url(a.response.signature) };
+    document.getElementById("approval").value = JSON.stringify({ ...s, signature: JSON.stringify(sig) });
+    document.getElementById("signOut").hidden = false;
+    say("signMsg", "Signed. Check the details above are what you meant to approve.", true);
+  } catch (e) { say("signMsg", "Not signed: " + e.message, false); }
+};
+</script>
+</body>
+</html>
