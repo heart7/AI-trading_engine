@@ -1,0 +1,9 @@
+{
+  "action": "POLICY_ACTIVATE",
+  "subject_hash": "6ae1ebf08e55252efbada0e588c2a3f15450afdc05bab7b1a9a92823e9a6209a",
+  "signer_id": "principal",
+  "rationale": "Activate policy v10.4.0 for PAPER mode only; no live orders.",
+  "signed_at": "2026-10-16T19:55:38+00:00",
+  "namespace": "uchfe-approval@v1",
+  "signature": "{\"type\":\"passkey\",\"credential_id\":\"9f62IUI2pCBbknGj8v93a5UEAKA\",\"authenticator_data\":\"sygZaIR_0wC-Eeb90wVhHue1RDbdIhcnpknH8H_tHlIdAAAAAA\",\"client_data_json\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVjRRTHVDbXUtdGthZFVTcFZwWDZwQ2NWME9nUmVOLUgtcUZLcENxWENndyIsIm9yaWdpbiI6Imh0dHBzOi8vaGVhcnQ3LmdpdGh1Yi5pbyIsImNyb3NzT3JpZ2luIjpmYWxzZX0\",\"signature\":\"MEUCIFEdKEJI0sAlW6LneJctKKAKZqqpZHyKLC5vcCwFlTqYAiEA2VuujSENvU0abLBXxwXefXyNvdR35A4U9dBE1Hgk3ec\"}"
+}

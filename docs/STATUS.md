@@ -13,7 +13,7 @@ Legend: **RV** implemented + run-verified · **IU** implemented, unverified · *
 | Evidence checks C08/C13/C15 in PAPER | decided by default (2026-09-29) | decision 0001: DEFERRED in PAPER, bind from SHADOW |
 | Single-signer approvals: passkey (WebAuthn, biometric or device PIN required) and FIDO2 `sk-` SSHSIG verification, user-presence flag, rationale inside the signed bytes, counter replay check, cooling-off field honoured (0h) | RV | `engine/governance/` |
 | Principal's passkeys enrolled (main + backup device) | SN — owner action (decision 0009) | `docs/OWNER-ACTIONS.md` |
-| Policy v10.4.0 signed by the principal | SN — owner action | `docs/OWNER-ACTIONS.md` |
+| Policy v10.4.0 signed by the principal | RV — POLICY_ACTIVATE for PAPER signed with the `phone` passkey on 2026-10-16; `tools/uchfe.py verify` and `activate --mode PAPER` pass | `policy/approvals/policy-10.4.0-paper.json` |
 | Hypothesis registry seeded with pre-registered steps 2–5 and MDE; annual budget enforced | RV | `research/registry/` |
 | ASSUMED-parameter register with owner + review date | RV (content), SN (UI chip) | `policy/assumed_register.yaml` |
 | Negative-test suite: all 43 invariants registered; uncovered ones xfail and are listed as NOT_IMPLEMENTED | RV | `tests/negative/` |
