@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# One-screen health check: timers, last runs, journal chain, learning ledger, disk, backups.
+set -uo pipefail
+. "$(dirname "$(readlink -f "$0")")/uchfe-env"
+cd "$UCHFE_STATE"
+echo "== code: $(git -C "$UCHFE_REPO" rev-parse --short=12 HEAD) on $UCHFE_BRANCH"
+echo "== timers"; systemctl list-timers 'uchfe-*' --no-pager | sed '/^$/d'
+for u in uchfe-ui uchfe-cycle uchfe-learn uchfe-backup uchfe-update; do
+  printf '   %-13s %s\n' "$u" "$(systemctl show -p ActiveState,Result --value "$u.service" | paste -sd' ')"
+done
+echo "== shadow journal"; sudo -u uchfe "$PY" "$UCHFE_REPO"/tools/shadow.py status --journal "$JOURNAL" 2>&1 | head -5
+echo "== learning ledger"; sudo -u uchfe "$PY" "$UCHFE_REPO"/tools/learn.py history --dir "$LEARNING" --limit 7
+echo "== disk"; du -sh "$UCHFE_STATE"/* 2>/dev/null; df -h / | tail -1
+echo "== latest backup"; ls -1t "$BACKUPS"/uchfe-state-*.tar.gz 2>/dev/null | head -1

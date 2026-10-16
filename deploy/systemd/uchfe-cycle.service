@@ -1,0 +1,15 @@
+[Unit]
+Description=UCHFE shadow cycle (paper only: public prices, no keys, no orders)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=uchfe
+ExecStart=/opt/uchfe/repo/deploy/bin/uchfe-cycle
+ExecStartPost=+/bin/systemctl try-restart uchfe-ui.service
+TimeoutStartSec=15min
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/uchfe
+PrivateTmp=true

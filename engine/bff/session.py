@@ -48,8 +48,35 @@ def fixture_universe(policy: dict, bars: int) -> list[Series]:
     return out
 
 
+def live_universe(policy: dict, history_dir: str | Path, bars: int | None = None) -> list[Series]:
+    """Certified OBSERVED series from a shadow history store (tools/build_dataset.py --live), in policy order.
+
+    The series are cut to a common window that starts at 00:00 UTC, so every instrument shares one bar grid.
+    """
+    from engine.shadow import feed
+    names = list(policy["universe"]["A"]["mandatory"]) + list(policy["universe"]["A"]["default"])
+    loaded = []
+    for base in names:
+        s = feed.load_history(feed.store_path(Path(history_dir), base))
+        if s is None:
+            raise FileNotFoundError(f"no certified history for {base} in {history_dir}")
+        loaded.append(s)
+    end = min(int(s.open_time[-1]) for s in loaded)
+    cut = []
+    for s in loaded:
+        k = int(np.searchsorted(s.open_time, end, side="right"))
+        cut.append((s, k))
+    n = min(k for _s, k in cut)
+    if bars is not None:
+        n = min(n, bars)
+    while n > 0 and int(cut[0][0].open_time[cut[0][1] - n]) % 86400:
+        n -= 1
+    return [Series(s.instrument_id, s.open_time[k - n:k], s.o[k - n:k], s.h[k - n:k], s.l[k - n:k], s.c[k - n:k], certified=True)
+            for s, k in cut]
+
+
 def pair_name(instrument_id: str) -> str:
-    return instrument_id.replace("FIXTURE_", "") + "/USD"
+    return base_of(instrument_id) + "/USD"
 
 
 def base_of(instrument_id: str) -> str:
@@ -99,14 +126,20 @@ class PaperSession:
     reporter_log: list[dict] = field(default_factory=list)
     extra_activity: list[dict] = field(default_factory=list)  # test hook: injected late or extra events
     cycle_cache: dict = field(default_factory=dict)  # cycle index -> events (shared by masked views)
+    fixture: bool = True  # False when built over a certified live history store (build(history=...))
+    journal_path: Path | None = None  # shadow journal shown on Validation/Settings; None = runs/shadow/journal.jsonl
+    learning_dir: Path | None = None  # learner proposals and ledger; None = runs/learning
 
     # ---------- construction ----------
     @classmethod
     def build(cls, *, bars: int = 6 * 365 * 3, nav0: float = 30_000.0, harness_path: str | Path | None = None,
-              policy_path: str | Path | None = None) -> PaperSession:
+              policy_path: str | Path | None = None, history: str | Path | None = None,
+              journal: str | Path | None = None, learning: str | Path | None = None) -> PaperSession:
+        """A paper replay of the policy universe. `history` replays certified live bars instead of FIXTURE bars;
+        it is still a paper session (no venue contacted, no key read)."""
         pol = load_policy(policy_path)
         doc = thaw(pol.doc)
-        series = fixture_universe(doc, bars)
+        series = live_universe(doc, history) if history is not None else fixture_universe(doc, bars)
         router = StrategyRouter(doc)
         costs = CostModel()
         res = replay(series, doc, router, ReplayConfig(nav0=nav0, mu_q_daily=FIXTURE_MU_Q, keep_intents_for_last_cycles=WINDOW_BARS),
@@ -125,7 +158,8 @@ class PaperSession:
             import json
             harness = json.loads(hp.read_text())
         return cls(doc, pol.hash, pol.version, series, res, costs, states, claims, ev, kill_verifier_drill(), IncidentLog(),
-                   harness, nav0, now, stream_last_good=now)
+                   harness, nav0, now, stream_last_good=now, fixture=history is None,
+                   journal_path=Path(journal) if journal else None, learning_dir=Path(learning) if learning else None)
 
     # ---------- clock and masking ----------
     @property
@@ -147,8 +181,9 @@ class PaperSession:
         return datetime.fromtimestamp(int(self.series[0].open_time[i]) + H4, tz=timezone.utc)
 
     def by_id(self, instrument_id: str) -> Series:
+        want = base_of(instrument_id).upper()
         for s in self.series:
-            if s.instrument_id == instrument_id or base_of(s.instrument_id) == instrument_id.split("/")[0].upper():
+            if s.instrument_id == instrument_id or base_of(s.instrument_id) == want:
                 return s
         raise KeyError(instrument_id)
 

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# One shadow cycle on public Kraken + Bitstamp prices (paper only, no keys, no orders). Run by uchfe-cycle.timer.
+set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/uchfe-env"
+cd "$UCHFE_STATE"
+"$PY" "$UCHFE_REPO"/tools/shadow.py run --history "$HISTORY" --journal "$JOURNAL" --ladder "$LADDER"
+"$PY" "$UCHFE_REPO"/tools/shadow.py status --journal "$JOURNAL"

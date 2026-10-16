@@ -1,0 +1,11 @@
+[Unit]
+Description=UCHFE nightly archive of journal, history and learning ledger
+
+[Service]
+Type=oneshot
+User=uchfe
+ExecStart=/opt/uchfe/repo/deploy/bin/uchfe-backup
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/uchfe
+PrivateTmp=true

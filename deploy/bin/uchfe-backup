@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Nightly local archive of everything the engine has learned and recorded (journal, history, ledger, snapshots).
+# Keeps 14 days on the server; the provider's daily droplet backups are the off-machine copy (deploy/README.md).
+set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/uchfe-env"
+cd "$UCHFE_STATE"
+"$PY" "$UCHFE_REPO"/tools/shadow.py status --journal "$JOURNAL" >/dev/null   # refuse to archive a broken journal chain silently
+mkdir -p "$BACKUPS"
+out="$BACKUPS/uchfe-state-$(date -u +%Y%m%dT%H%MZ).tar.gz"
+tar -C "$UCHFE_STATE" --exclude=./backups -czf "$out.tmp" .
+mv "$out.tmp" "$out"
+sha256sum "$out" > "$out.sha256"
+ls -1t "$BACKUPS"/uchfe-state-*.tar.gz | tail -n +15 | while read -r f; do rm -f "$f" "$f.sha256"; done
+echo "backup: $out ($(du -h "$out" | cut -f1))"

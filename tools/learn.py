@@ -5,6 +5,9 @@
   retune   fit the cost model to OBSERVED shadow quotes and real fills; writes a proposal, never applies it
   status   episodes on file by class, process-error rate, training-set size
   drift    PSI drift monitors on a certified store (last 30 days vs the 180 before); FAIL halts the learner
+  snapshot the daily learning run for a hosted engine: retune + drift + regime calibration + episode status, archived
+           under <dir>/snapshots/<date>/ and appended to the hash-chained <dir>/ledger.jsonl (research/learner/ledger.py)
+  history  print the learning ledger: how proposals, drift and calibration moved day by day
 
 On your own machine, once the shadow record has entries priced from the order book:
 
@@ -131,6 +134,82 @@ def cmd_drift(a: argparse.Namespace) -> int:
     return 0
 
 
+def _commit() -> str | None:
+    import subprocess
+    try:
+        out = subprocess.run(["git", "-C", str(Path(__file__).resolve().parents[1]), "rev-parse", "--short=12", "HEAD"],
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+def cmd_snapshot(a: argparse.Namespace) -> int:
+    from datetime import datetime, timezone
+
+    from engine.shadow import feed
+    from engine.shadow.runner import ShadowJournal
+    from research.learner import drift, ledger
+
+    now = datetime.now(timezone.utc)
+    day = now.date().isoformat()
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    if day in ledger.recorded_dates(out) and not a.force:
+        print(f"learning snapshot for {day} already in {out / 'ledger.jsonl'}")
+        return 0
+    pol = load_policy(a.policy)
+    doc = thaw(pol.doc)
+    bases = a.pair or ["BTC", "XRP", "ETH", "SOL"]
+    series = [s for s in (feed.load_history(feed.store_path(Path(a.history), b)) for b in bases) if s is not None]
+    jpath = Path(a.journal)
+    journal = ShadowJournal(jpath).records() if jpath.exists() else []
+    eps = _records(a.episodes)
+    # cost model: proposal only (applies: false)
+    prop = cost_retune.fit(cost_retune.observations(eps, journal), quantile=float(doc["cost"]["slippage_quantile"]))
+    if series and "proposed" in prop:
+        from engine.shadow.runner import align
+        prop["effect"] = cost_retune.effect(doc, align(series), prop, mu_q_daily=a.mu_q)
+    prop["policy_hash"] = pol.hash
+    (out / "cost-proposal.json").write_text(json.dumps(prop, indent=2, default=str) + "\n")
+    rep = drift.report(series)
+    (out / "drift.json").write_text(json.dumps(rep, indent=2, default=str) + "\n")
+    cal = ledger.calibration(series, doc, now=now)
+    (out / "calibration.json").write_text(json.dumps(cal, indent=2, default=str) + "\n")
+    cal_status = drift.calibration_status(cal, today=now.date(), ece_warn=doc["regime"]["ece_warn"], ece_fail=doc["regime"]["ece_fail"])
+    halt = drift.learner_halt(rep, [dict(cal_status, model="CCMRM")])
+    where, hashes = ledger.archive(out, day)
+    rec = ledger.summarise(day=day, at=now, policy_hash=pol.hash, code_commit=_commit(), journal=journal,
+                           journal_head=ShadowJournal(jpath).log.head if jpath.exists() else None, proposal=prop,
+                           drift_report=rep, halt=halt, calib=cal, calib_status=cal_status, episodes=eps,
+                           process_error_rate=episodes.process_error_rate(eps), archive=where, hashes=hashes)
+    log = ledger.ledger(out)
+    log.append(rec)
+    print(f"learning snapshot {day}: cost {rec['cost']['verdict']} · drift {rec['drift']['status']} · "
+          f"calibration {cal_status['status']} (ECE {cal['ece'] if cal['ece'] is None else round(cal['ece'], 4)}) · "
+          f"budget {rec['learner_budget']} · ledger {log.verify()} days, chain intact")
+    return 0
+
+
+def cmd_history(a: argparse.Namespace) -> int:
+    from research.learner import ledger
+    rows = ledger.history(Path(a.dir), a.limit)
+    if not rows:
+        print(f"no learning ledger in {a.dir} yet (tools/learn.py snapshot writes one a day)")
+        return 0
+    n = ledger.ledger(Path(a.dir)).verify()
+    print(f"learning ledger: {n} days, hash chain intact")
+    print(f"{'date':<11} {'cycles':>6} {'priced':>6} {'cost verdict':<22} {'live q75':>9} {'proposed':>9} {'drift':<6} {'ECE':>7} {'calib':<8} budget")
+    for r in rows:
+        c, cal = r["cost"], r["calibration"]
+        ece = "—" if cal["ece"] is None else f"{cal['ece']:.4f}"
+        prop = "—" if c["proposed_slippage_q75"] is None else f"{c['proposed_slippage_q75']:.5f}"
+        live = "—" if c["live_slippage_q75"] is None else f"{c['live_slippage_q75']:.5f}"
+        print(f"{r['date']:<11} {r['journal']['cycles']:>6} {r['journal']['rows_priced']:>6} {str(c['verdict']):<22} {live:>9} {prop:>9} "
+              f"{str(r['drift']['status']):<6} {ece:>7} {str(cal['status']):<8} {r['learner_budget']}")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--policy")
@@ -155,7 +234,22 @@ def main() -> int:
     dr.add_argument("--pair", action="append")
     dr.add_argument("--out", default="runs/learning")
     dr.set_defaults(fn=cmd_drift)
+    sn = sub.add_parser("snapshot")
+    sn.add_argument("--history", required=True)
+    sn.add_argument("--journal", required=True)
+    sn.add_argument("--episodes", default=None, help="default <out>/episodes.jsonl")
+    sn.add_argument("--pair", action="append")
+    sn.add_argument("--mu-q", type=float, default=None)
+    sn.add_argument("--out", default="runs/learning")
+    sn.add_argument("--force", action="store_true", help="record again even if today is already in the ledger")
+    sn.set_defaults(fn=cmd_snapshot)
+    hi = sub.add_parser("history")
+    hi.add_argument("--dir", default="runs/learning")
+    hi.add_argument("--limit", type=int, default=30)
+    hi.set_defaults(fn=cmd_history)
     a = p.parse_args()
+    if getattr(a, "fn", None) is cmd_snapshot and a.episodes is None:
+        a.episodes = str(Path(a.out) / "episodes.jsonl")
     return a.fn(a)
 
 

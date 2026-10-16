@@ -1,0 +1,13 @@
+# Shared paths for the hosted engine (sourced by the other deploy/bin scripts). PAPER only: no keys live here.
+UCHFE_HOME=${UCHFE_HOME:-/opt/uchfe}
+UCHFE_REPO=${UCHFE_REPO:-$UCHFE_HOME/repo}
+UCHFE_VENV=${UCHFE_VENV:-$UCHFE_HOME/venv}
+UCHFE_STATE=${UCHFE_STATE:-/var/lib/uchfe}
+UCHFE_BRANCH=${UCHFE_BRANCH:-main}
+PY="$UCHFE_VENV/bin/python"
+HISTORY="$UCHFE_STATE/history"
+JOURNAL="$UCHFE_STATE/shadow/journal.jsonl"
+LADDER="$UCHFE_STATE/shadow/ladder.json"
+LEARNING="$UCHFE_STATE/learning"
+BACKUPS="$UCHFE_STATE/backups"
+PAIRS=(BTC XRP ETH SOL)

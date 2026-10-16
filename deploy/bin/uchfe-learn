@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Daily learning snapshot: cost retune proposal, drift, regime calibration, episode status -> hash-chained ledger.
+# Proposals only (applies: false); making one live is a signed policy change. Run by uchfe-learn.timer.
+set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/uchfe-env"
+cd "$UCHFE_STATE"
+"$PY" "$UCHFE_REPO"/tools/learn.py snapshot --history "$HISTORY" --journal "$JOURNAL" --out "$LEARNING" "$@"
+"$PY" "$UCHFE_REPO"/tools/learn.py history --dir "$LEARNING" --limit 7

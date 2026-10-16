@@ -1,0 +1,14 @@
+[Unit]
+Description=UCHFE daily learning snapshot (proposals only; nothing self-applies)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=uchfe
+ExecStart=/opt/uchfe/repo/deploy/bin/uchfe-learn
+ExecStartPost=+/bin/systemctl try-restart uchfe-ui.service
+TimeoutStartSec=30min
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/uchfe
+PrivateTmp=true

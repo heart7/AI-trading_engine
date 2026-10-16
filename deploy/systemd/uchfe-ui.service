@@ -1,0 +1,18 @@
+[Unit]
+Description=UCHFE read-only engine UI (paper replay over the certified live store)
+After=network-online.target
+
+[Service]
+User=uchfe
+WorkingDirectory=/var/lib/uchfe
+ExecStart=/opt/uchfe/venv/bin/python -m engine.bff.server --host 127.0.0.1 --port 8710 \
+  --history /var/lib/uchfe/history --journal /var/lib/uchfe/shadow/journal.jsonl --learning /var/lib/uchfe/learning
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadOnlyPaths=/var/lib/uchfe
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
