@@ -11,6 +11,8 @@ The activity stream is Server-Sent Events at GET /v1/activity/stream (§16.8.2 n
 standard-library equivalent for a one-way feed, decision 0005).
 
   python -m engine.bff.server --port 8710       # then open http://127.0.0.1:8710/
+  python -m engine.bff.server --history /var/lib/uchfe/history --journal /var/lib/uchfe/shadow/journal.jsonl \
+      --learning /var/lib/uchfe/learning        # paper replay over the certified live store (deploy/README.md)
 """
 from __future__ import annotations
 
@@ -70,6 +72,7 @@ ROUTES: list[tuple[str, str, Handler]] = [
     ("GET", r"/v1/validation", lambda s, m, q: P.validation(s)),
     ("GET", r"/v1/settings", lambda s, m, q: P.settings(s)),
     ("GET", r"/v1/settings/exchanges", lambda s, m, q: P.exchanges(s)),
+    ("GET", r"/v1/learning/history", lambda s, m, q: P.learning_history(s, _int(q, "limit", 90))),
     ("POST", r"/v1/reporter/ask", None),  # handled in do_POST: the only non-GET route, and it mutates no engine state
 ]
 _COMPILED = [(meth, re.compile("^" + pat + "$"), h) for meth, pat, h in ROUTES]
@@ -179,9 +182,14 @@ def main() -> None:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8710)
     ap.add_argument("--harness", default="runs/harness-fixture/harness.json", help="harness run record to show on Validation")
+    ap.add_argument("--history", help="certified live store (tools/build_dataset.py --live); omitted = FIXTURE bars")
+    ap.add_argument("--journal", help="shadow journal to show (default runs/shadow/journal.jsonl)")
+    ap.add_argument("--learning", help="learner directory: cost-proposal.json and ledger.jsonl (default runs/learning)")
     a = ap.parse_args()
-    srv = serve(PaperSession.build(harness_path=a.harness), a.host, a.port)
-    print(f"UCHFE paper UI on http://{a.host}:{srv.server_address[1]}/ (PAPER, FIXTURE data, read-only)")
+    session = PaperSession.build(harness_path=a.harness, history=a.history, journal=a.journal, learning=a.learning)
+    srv = serve(session, a.host, a.port)
+    data = "FIXTURE data" if session.fixture else f"certified live bars to {session.now:%Y-%m-%d %H:%M} UTC"
+    print(f"UCHFE paper UI on http://{a.host}:{srv.server_address[1]}/ (PAPER, {data}, read-only)", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

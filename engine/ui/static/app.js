@@ -380,7 +380,13 @@ S.bots = function () {
         ["Learner budget", d.learning.halted ? '<span class="fail">halted: ' + esc(d.learning.halted) + '</span>' : "open"]])) + '<div class="gap"></div>' +
         U.panel("Learner proposals vs live parameters", U.table(["Parameter", "Live", "Proposed", "Verdict", "Evidence", "Applies"], d.learning.proposals.map(function (x) {
           return [esc(x.parameter), esc(x.live), esc(x.proposed), esc(x.verdict) + '<div class="note">' + esc(x.detail) + '</div>', esc(x.evidence), x.applies ? "yes" : "no"];
-        }), "Learner proposals"))) +
+        }), "Learner proposals")) + '<div class="gap"></div>' +
+        U.panel("Learning over time (daily ledger)", d.learning.history.length ? U.table(["Date", "Cycles", "Priced", "Cost verdict", "Live q75", "Proposed", "Drift", "ECE", "Calibration", "Learner budget"],
+          d.learning.history.map(function (r) {
+            return [esc(r.date), esc(r.cycles), esc(r.priced), esc(r.cost_verdict), esc(r.live_q75), esc(r.proposed_q75),
+              r.drift === "FAIL" ? '<span class="fail">FAIL</span><div class="note">' + esc(r.drift_fail.join(", ")) + '</div>' : esc(r.drift),
+              esc(r.ece), esc(r.calibration), esc(r.budget)];
+          }), "Learning ledger") : '<p class="note">No learning ledger yet. The hosted engine writes one row a day (deploy/README.md).</p>')) +
       U.panel("Instruction log", d.instruction_log.length ? U.table(["At", "Question", "Refused"], d.instruction_log.map(function (x) { return [esc(x.at), esc(x.question), x.refused ? "refused" : "answered"]; })) : '<p class="note">No reporter instructions yet.</p>', {fixture: false}) +
       (function () { U.after = function () { if (U.drawEmissions) U.drawEmissions(document.getElementById("bemis"), em); }; return ""; })();
   });

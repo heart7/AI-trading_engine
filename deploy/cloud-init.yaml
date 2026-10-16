@@ -1,0 +1,7 @@
+#cloud-config
+# Paste this into "User data" when creating the server (DigitalOcean: Advanced options > Add initialization scripts).
+# It installs the paper-only engine from the public repo. No keys or personal details belong here.
+package_update: true
+packages: [git, curl]
+runcmd:
+  - [bash, -c, "curl -fsSL https://raw.githubusercontent.com/heart7/AI-trading_engine/main/deploy/install.sh -o /root/uchfe-install.sh && bash /root/uchfe-install.sh > /var/log/uchfe-install.log 2>&1"]

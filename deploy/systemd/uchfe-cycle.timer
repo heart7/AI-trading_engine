@@ -1,0 +1,10 @@
+[Unit]
+Description=Shadow cycle 10 minutes after each 4h close (00:10, 04:10, ... UTC)
+
+[Timer]
+OnCalendar=*-*-* 00/4:10:00 UTC
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

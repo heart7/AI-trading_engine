@@ -62,7 +62,7 @@ def retrieve(s: PaperSession, question: str) -> dict[str, Any]:
         fr = P.fund_room(s)
         parts["why_not_trading"] = [w for w in fr["why_not_trading"] if pair is None or w["pair"].startswith(pair)]
     if pair:
-        parts["rail"] = P.pair_rail(s, f"FIXTURE_{pair}")
+        parts["rail"] = P.pair_rail(s, pair)
         if any(w in q for w in ("regime", "probab", "state")):
             parts["probability"] = P.probability(s, pair)
     if any(w in q for w in ("nav", "p&l", "pnl", "profit", "loss", "money", "return")):
@@ -179,7 +179,7 @@ def ask(s: PaperSession, question: str, *, drafter: Callable[[str, Mapping[str, 
     cites = [c for c in cites if c in known]
     s.reporter_log.append({"at": now.isoformat(), "question": question, "refused": False, "id": qid, "stripped": len(stripped)})
     return {"id": qid, "question": question, "answer": text, "citations": cites, "refused": False, "class": "REPORTED",
-            "exportable_as_evidence": False, "stripped": stripped, "pairs": [pair_name(f"FIXTURE_{p}") for p in PAIRS if p.lower() in question.lower()]}
+            "exportable_as_evidence": False, "stripped": stripped, "pairs": [pair_name(p) for p in PAIRS if p.lower() in question.lower()]}
 
 
 def reporter_events(log: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:

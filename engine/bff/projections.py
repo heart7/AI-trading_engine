@@ -59,6 +59,8 @@ STEP_FALSIFICATION = {1: "coverage < 99% or quarantine > 1% -> dataset not certi
 # ---------------------------------------------------------------- helpers
 def F(s: PaperSession, fid: str, label: str, value: Any, cls: str, **kw: Any) -> dict[str, Any]:
     kw.setdefault("now", s.clock)
+    if not s.fixture:
+        kw["fixture"] = False  # a live-history session: figures come from certified OBSERVED bars
     return render(figure(fid, label, value, cls, **kw), n_eff_floor=int(s.policy["ui"]["n_eff_warning_floor"]))
 
 
@@ -329,6 +331,7 @@ def activity_pair(s: PaperSession, pair: str, bars: int = WINDOW_BARS) -> dict[s
 def pair_rail(s: PaperSession, inst: str) -> dict[str, Any]:
     i = s.last_index()
     ser = s.by_id(inst)
+    inst = ser.instrument_id
     sig = s.result.signals[inst]
     close = s.bar_close(i)
     lo, hi = t_band(ser.c, sig, s.policy, np.array([i]))
@@ -378,7 +381,7 @@ def pair_rail(s: PaperSession, inst: str) -> dict[str, Any]:
 def activity_universe(s: PaperSession) -> dict[str, Any]:
     i = s.last_index()
     cards = []
-    order = [f"FIXTURE_{b}" for b in list(s.policy["universe"]["A"]["mandatory"]) + list(s.policy["universe"]["A"]["default"])]
+    order = [s.by_id(b).instrument_id for b in list(s.policy["universe"]["A"]["mandatory"]) + list(s.policy["universe"]["A"]["default"])]
     _closed, open_ = s.trades_visible()
     for inst in order:
         ser = s.by_id(inst)
@@ -718,10 +721,18 @@ def validation(s: PaperSession) -> dict[str, Any]:
                          "allowed_mode": "PAPER"}],
             "mode_ladder": ["PAPER", "SHADOW", "CANARY", "LIVE"], "source": "harness run records" if h else "no run records on file",
             "promotion": {"enabled": False, "reason": "promotion needs every prior step PASS"},
-            "shadow": shadow_record(SHADOW_JOURNAL), "fixture": True}
+            "shadow": shadow_record(journal_path(s)), "fixture": True}
 
 
 SHADOW_JOURNAL = ROOT / "runs" / "shadow" / "journal.jsonl"
+
+
+def journal_path(s: PaperSession) -> Path:
+    return s.journal_path or SHADOW_JOURNAL
+
+
+def learning_dir(s: PaperSession) -> Path:
+    return s.learning_dir or LEARNING_DIR
 
 
 def shadow_record(path: Path) -> dict[str, Any]:
@@ -748,6 +759,28 @@ def shadow_record(path: Path) -> dict[str, Any]:
 
 
 LEARNING_DIR = ROOT / "runs" / "learning"
+
+
+def learning_history(s: PaperSession, limit: int | None = 90) -> dict[str, Any]:
+    """The learning ledger, newest last (research/learner/ledger.py): one row per day, read-only."""
+    from research.learner import ledger
+    d = learning_dir(s)
+    rows = ledger.history(d, max(1, min(int(limit), 3650)) if limit else None)
+    try:
+        chain = ledger.ledger(d).verify() if (d / "ledger.jsonl").exists() else 0
+        status = f"{chain} days, hash chain intact" if chain else "no learning ledger yet"
+    except Exception as e:  # a broken chain is shown, never hidden
+        status = f"learning ledger hash chain broken: {e}"
+    days = [{"date": r["date"], "cycles": r["journal"]["cycles"], "priced": r["journal"]["rows_priced"],
+             "cost_verdict": r["cost"]["verdict"],
+             "live_q75": "—" if r["cost"]["live_slippage_q75"] is None else fmt_number(r["cost"]["live_slippage_q75"], digits=5),
+             "proposed_q75": "—" if r["cost"]["proposed_slippage_q75"] is None else fmt_number(r["cost"]["proposed_slippage_q75"], digits=5),
+             "drift": r["drift"]["status"], "drift_fail": r["drift"]["fail"],
+             "ece": "—" if r["calibration"]["ece"] is None else fmt_number(r["calibration"]["ece"], digits=4),
+             "calibration": r["calibration"]["status"], "budget": r["learner_budget"], "commit": r.get("code_commit")}
+            for r in rows]
+    return {"status": status, "days": days, "applies": False,
+            "rule": "A record of what the learner measured and proposed each day. Nothing in it changes the engine."}
 
 
 def admissibility_board(s: PaperSession) -> dict[str, Any]:
@@ -793,14 +826,14 @@ def learning(s: PaperSession) -> dict[str, Any]:
     closed, _ = s.trades_visible()
     eps = episodes.from_replay(replace(s.result, trades=closed), s.series, s.policy, s.policy_hash, costs=s.costs)
     rate = episodes.process_error_rate(eps)
-    pfile = LEARNING_DIR / "cost-proposal.json"
+    pfile = learning_dir(s) / "cost-proposal.json"
     if pfile.exists():
-        prop, src = json.loads(pfile.read_text()), "runs/learning/cost-proposal.json"
+        prop, src = json.loads(pfile.read_text()), "learner cost-proposal.json"
     else:
         prop, src = cost_retune.fit(cost_retune.observations(eps), costs=s.costs), "fixture episodes"
     live = prop["current"]["slippage_q75"]
     proposed = prop.get("proposed", {}).get("slippage_q75")
-    cal = drift.calibration_status(None, today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
+    cal = drift.calibration_status(_calibration_record(s), today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
                                    ece_fail=s.policy["regime"]["ece_fail"])
     halt = drift.learner_halt(drift.report(s.series), [dict(cal, model="CCMRM")])
     return {"episodes": {"count": len(eps), "class": "FIXTURE",
@@ -812,7 +845,7 @@ def learning(s: PaperSession) -> dict[str, Any]:
                            "proposed": "—" if proposed is None else fmt_number(proposed, digits=5),
                            "verdict": prop["verdict"], "evidence": f"{prop['evidence_class']} · {src}",
                            "detail": prop.get("detail", ""), "applies": False}],
-            "halted": halt, "apply_control": False,
+            "halted": halt, "apply_control": False, "history": learning_history(s, 14)["days"],
             "rule": "Proposals never apply themselves: a change needs the harness, a stress PASS and a signed policy."}
 
 
@@ -1091,9 +1124,21 @@ def bots(s: PaperSession, light: bool = False) -> dict[str, Any]:
             "apply_control": False, "fixture": True, "inactive": [f"Allocator inactive at {tier}"]}
 
 
+def _calibration_record(s: PaperSession) -> dict | None:
+    """The latest regime calibration written by `tools/learn.py snapshot`, or None. FIXTURE sessions ignore it."""
+    import json
+    f = learning_dir(s) / "calibration.json"
+    if s.fixture or not f.exists():
+        return None
+    try:
+        return json.loads(f.read_text())
+    except ValueError:
+        return None
+
+
 def _calibration(s: PaperSession) -> dict[str, Any]:
     from research.learner import drift
-    c = drift.calibration_status(None, today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
+    c = drift.calibration_status(_calibration_record(s), today=s.clock.date(), ece_warn=s.policy["regime"]["ece_warn"],
                                  ece_fail=s.policy["regime"]["ece_fail"])
     return {"model": "CCMRM", "ece": c.get("ece"), "authoritative": c["authoritative"], "status": c["status"],
             "expires": c["expires"], "text": c["text"] + f" (a measurement expires after {drift.CALIBRATION_TTL_DAYS} days)"}
@@ -1137,7 +1182,8 @@ def _golive(s: PaperSession) -> list[dict[str, Any]]:
     from engine.governance.golive import checklist, today_utc
     from engine.policy.loader import load_policy
     from engine.shadow.runner import ShadowJournal
-    journal = ShadowJournal(SHADOW_JOURNAL).records() if SHADOW_JOURNAL.exists() else []
+    jp = journal_path(s)
+    journal = ShadowJournal(jp).records() if jp.exists() else []
     return checklist(load_policy(), today=today_utc(), journal=journal)  # real-world status, not the fixture clock
 
 

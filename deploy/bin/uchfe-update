@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Fast-forward the server to what is merged on main (only Gerald merges to main), reinstall, restart the UI.
+# Never touches $UCHFE_STATE. Run by uchfe-update.timer, or by hand: sudo /opt/uchfe/repo/deploy/bin/uchfe-update
+set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/uchfe-env"
+before=$(git -C "$UCHFE_REPO" rev-parse HEAD)
+git -C "$UCHFE_REPO" fetch -q origin "$UCHFE_BRANCH"
+git -C "$UCHFE_REPO" merge -q --ff-only "origin/$UCHFE_BRANCH"
+after=$(git -C "$UCHFE_REPO" rev-parse HEAD)
+if [ "$before" = "$after" ]; then echo "up to date at ${after:0:12}"; exit 0; fi
+"$UCHFE_VENV/bin/pip" install -q -e "$UCHFE_REPO"
+install -m 0644 "$UCHFE_REPO"/deploy/systemd/*.service "$UCHFE_REPO"/deploy/systemd/*.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl try-restart uchfe-ui.service
+echo "updated ${before:0:12} -> ${after:0:12}"

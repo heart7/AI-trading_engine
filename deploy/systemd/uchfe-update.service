@@ -1,0 +1,9 @@
+[Unit]
+Description=UCHFE fast-forward to main (only merged code), reinstall, restart UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/uchfe/repo/deploy/bin/uchfe-update
+TimeoutStartSec=15min

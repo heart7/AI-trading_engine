@@ -33,7 +33,12 @@ Nothing here is needed for PAPER mode. None of it should be pasted into the chat
 - When a testnet run is wanted: create **read-only** and **trade-only** demo/testnet keys (never with withdrawal permission). They go into the secret store from Settings, not into this repo or the chat.
 - Binance and Bybit stay data-only unless each confirms in writing that a UK resident may trade on the account (INV-43).
 
-## 5. Live-data record (P6): running
+## 5. Live-data record (P6): running, moving to its own server
+To keep the record and the learning trail on durable storage, set up the small London server in `deploy/README.md`
+(DigitalOcean account and card, one Droplet with daily backups, about $8 a month). It runs the cycle every 4 hours,
+writes a daily learning ledger, and serves the UI over an SSH tunnel. No exchange account or key is needed. Decision
+0010.
+
 Since 2026-10-01 the record runs in the cloud every 4 hours on public Kraken and Bitstamp prices (no account, no API
 key, no orders), with its journal in the project's shared `shadow` folder. Nothing to do. The commands below are
 only for running it on your own computer as well.
