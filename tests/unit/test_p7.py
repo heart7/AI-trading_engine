@@ -172,7 +172,8 @@ def test_golive_checklist_reports_every_item_and_nothing_is_ready_today():
     assert [i["item"] for i in items] == [f"L{k}" for k in range(1, 10)]
     assert not golive.ready(items)
     by = {i["item"]: i for i in items}
-    assert not by["L2"]["met"] and not by["L6"]["met"] and by["L6"]["owner"] == "accountant"
+    assert by["L2"]["met"] and "policy-10.4.0-paper.json" in by["L2"]["detail"]
+    assert not by["L6"]["met"] and by["L6"]["owner"] == "accountant"
     assert "tax config" in by["L6"]["detail"]
 
 
@@ -288,6 +289,6 @@ def test_governance_screen_carries_the_golive_checklist():
     from engine.bff import projections as P
     from tests.helpers.bff import session
     g = P.governance(session())["golive"]
-    assert [x["item"] for x in g] == [f"L{k}" for k in range(1, 10)] and not any(x["met"] for x in g[1:2])
+    assert [x["item"] for x in g] == [f"L{k}" for k in range(1, 10)] and g[1]["met"] and not all(x["met"] for x in g)
     js = (ROOT / "engine" / "ui" / "static" / "app.js").read_text()
     assert "Go-live checklist" in js and "Shadow record (P6)" in js
