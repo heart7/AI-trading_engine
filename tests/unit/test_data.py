@@ -141,6 +141,26 @@ def test_fetch_binance_pages_with_injected_fetcher():
     assert [b.open_time for b in out] == [T0 + i * H4 for i in range(5)]
 
 
+def test_reference_venue_retried_once_after_refusal():
+    import urllib.error
+    calls = {"bitstamp": 0}
+
+    def fake(url):
+        if "kraken" in url:
+            return {"error": [], "result": {"XBTUSD": [], "last": 0}}
+        if "bitstamp" in url:
+            calls["bitstamp"] += 1
+            if calls["bitstamp"] == 1:
+                raise urllib.error.HTTPError(url, 403, "Forbidden", None, None)
+            return {"data": {"pair": "BTC/USD", "ohlc": []}}
+        raise urllib.error.HTTPError(url, 451, "geo-blocked", None, None)
+
+    waits = []
+    out, skipped = src.venue_sources("BTC", "XBTUSD", T0, T0 + 2 * H4, fetch=fake, sleep=waits.append)
+    assert "bitstamp" in out and "bitstamp" not in skipped and calls["bitstamp"] == 2
+    assert set(skipped) == {"binance-spot", "bybit-v5-spot"} and len(waits) == 3
+
+
 def test_quote_conversion_never_assumes_par():
     b = bars(3)
     out = src.convert_quote(b, {b[0].open_time: 0.998, b[2].open_time: 1.001})

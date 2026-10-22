@@ -11,6 +11,7 @@ review; verify against current venue docs.
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
@@ -136,9 +137,11 @@ def fetch_bitstamp(pair: str, start: datetime, now: datetime, fetch: Fetch = _ht
 
 
 def venue_sources(base: str, kraken_pair: str, since: datetime, now: datetime,
-                  fetch: Fetch = _http_json) -> tuple[dict[str, list[Bar]], dict[str, str]]:
+                  fetch: Fetch = _http_json, attempts: int = 2, retry_wait: float = 3.0,
+                  sleep: Callable[[float], None] = time.sleep) -> tuple[dict[str, list[Bar]], dict[str, str]]:
     """Per-venue 4h bars for <base>/USD, Kraken first (the primary). A reference venue that refuses the request
-    (geo-block, outage) is left out and reported in the second dict; Kraken failing is fatal."""
+    (geo-block, outage) is retried up to `attempts` times, then left out and reported in the second dict; Kraken
+    failing is fatal. The retry covers Bitstamp's occasional one-off 403, which otherwise leaves the bar uncertified."""
     out = {"kraken-spot": fetch_kraken(kraken_pair, since, now, fetch=fetch)}
     skipped: dict[str, str] = {}
     usdt: dict[datetime, float] | None = None
@@ -155,10 +158,15 @@ def venue_sources(base: str, kraken_pair: str, since: datetime, now: datetime,
         ("bybit-v5-spot", lambda: convert_quote(fetch_bybit(f"{base}USDT", since, now, fetch=fetch), usdt_rate())),
     ]
     for name, get in venues:
-        try:
-            out[name] = get()
-        except (OSError, RuntimeError) as e:  # HTTPError/URLError are OSErrors
-            skipped[name] = f"{type(e).__name__}: {e}"
+        for attempt in range(attempts):
+            try:
+                out[name] = get()
+                skipped.pop(name, None)
+                break
+            except (OSError, RuntimeError) as e:  # HTTPError/URLError are OSErrors
+                skipped[name] = f"{type(e).__name__}: {e}"
+                if attempt + 1 < attempts:
+                    sleep(retry_wait)
     return out, skipped
 
 
