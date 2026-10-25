@@ -141,7 +141,7 @@ def test_fetch_binance_pages_with_injected_fetcher():
     assert [b.open_time for b in out] == [T0 + i * H4 for i in range(5)]
 
 
-def test_reference_venue_retried_once_after_refusal():
+def test_reference_venue_retried_after_refusal():
     import urllib.error
     calls = {"bitstamp": 0}
 
@@ -158,7 +158,8 @@ def test_reference_venue_retried_once_after_refusal():
     waits = []
     out, skipped = src.venue_sources("BTC", "XBTUSD", T0, T0 + 2 * H4, fetch=fake, sleep=waits.append)
     assert "bitstamp" in out and "bitstamp" not in skipped and calls["bitstamp"] == 2
-    assert set(skipped) == {"binance-spot", "bybit-v5-spot"} and len(waits) == 3
+    assert set(skipped) == {"binance-spot", "bybit-v5-spot"}
+    assert waits == [2.0]  # only bitstamp is retried; geo-blocked venues are skipped at once
 
 
 def test_quote_conversion_never_assumes_par():
